@@ -14,7 +14,7 @@
 | Level 1：61D observation / 14D action 实验 | 可用，6 个实验 |
 | Level 2：`control.duck` 与官方 3D 模拟器 | 可用，25 项 API |
 | 社区策略加载 | 模拟器基础路径可用 |
-| Level 3：任务与 Reward A/B 实验 | 开发分支可用；真实 MuJoCo rollout，不更新 policy |
+| Level 3：任务与 Reward A/B 实验 | 当前源码可用；真实 MuJoCo rollout，不更新 policy |
 | Level 4：PPO 训练 | 尚未实现 |
 | Level 5：评估、ONNX 导出与发布 | 尚未实现 |
 | Level 6：真机安装与安全验证 | 尚未实现 |

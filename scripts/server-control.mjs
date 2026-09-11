@@ -7,7 +7,6 @@ const projectDir = join(import.meta.dirname, '..');
 const publicPort = 3210;
 const appPort = 3211;
 const publicUrl = `http://localhost:${publicPort}`;
-let child;
 let shuttingDown = false;
 
 function openBrowser() {
@@ -56,7 +55,7 @@ try {
   process.exit(1);
 }
 
-child = spawn('npm', ['run', 'start', '--', '--port', String(appPort)], {
+const child = spawn('npm', ['run', 'start', '--', '--port', String(appPort)], {
   cwd: projectDir,
   env: { ...process.env, BROWSER: 'none' },
   stdio: 'inherit',
