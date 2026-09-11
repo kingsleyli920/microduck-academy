@@ -13,6 +13,11 @@ import { lessons, type Lesson } from './lessons';
 import { SimulatorInspector, type SimulatorTelemetry } from './simulator-inspector';
 import { ControlStudio } from './control-studio';
 import { parseControlProgram, parseNumberArguments, type ControlProgramNode } from './control-program';
+import { RewardLabStudio } from './reward-lab-studio';
+import {
+  defaultRewardConfigs, planarSpeedFromState, sanitizeRewardConfig, scoreRewardSample, terminationReason,
+  type RewardConfig, type RewardSlot, type RolloutResult,
+} from './reward-lab';
 
 type TestResult = { label: string; passed: boolean; actual: string; expected: string };
 type RunResult = { results: TestResult[]; passed: boolean; stdout: string; error: string | null };
@@ -31,6 +36,7 @@ type SimulatorRl = {
   buildObs: () => Float32Array;
   cmd: Float32Array;
   lastAction: Float32Array;
+  data: { qpos: ArrayLike<number>; qvel: ArrayLike<number> };
   controller: { addSource: (source: AcademyInputSource) => void };
   headTarget: Float32Array;
   headMode: boolean;
@@ -42,6 +48,8 @@ type SimulatorRl = {
   clearCustomPolicy: () => void;
   customPolicy: null | { ref: string; name: string; kind: 'perpetual' | 'episodic' | 'script'; slot: 'walk' | 'sitstand' | 'trick' | 'script' };
   toggleScript: () => void;
+  inputLocked: boolean;
+  respawnActive: boolean;
 };
 type AcademyInputSource = {
   id: string;
@@ -58,13 +66,16 @@ type AcademyInputSource = {
 };
 type SimulatorWindow = Window & typeof globalThis & { rl?: SimulatorRl; academySource?: AcademyInputSource };
 type SavedProgress = {
-  schemaVersion: 4;
+  schemaVersion: 5;
   currentId: number;
   completed: number[];
   solutions: Record<number, string>;
   simulatorScript: string;
   simulatorRuns: number;
   level1Completed: number[];
+  rewardConfigs: Record<RewardSlot, RewardConfig>;
+  rewardResults: Partial<Record<RewardSlot, RolloutResult>>;
+  level3Completed: number[];
   updatedAt: string;
 };
 
@@ -94,7 +105,7 @@ const learningLevels = [
   { level: 'Level 0', title: '强化学习心智模型', status: '现在可学 · 9 关', detail: '用 Python 掌握 environment、observation、action、reward、rollout、return、PPO 与部署安全。' },
   { level: 'Level 1', title: '读懂真实策略', status: '现在可学 · 6 个实验', detail: '在官方模拟器中观察 61D observation、14D action、50 Hz 控制循环和 policy 切换。' },
   { level: 'Level 2', title: '编写实时控制程序', status: '现在可用', detail: '用 drive、turn、look、if、repeat 和 observation 分支控制 50 Hz policy，也能调用已有 skills。' },
-  { level: 'Level 3', title: '设计一个新任务', status: '规划中', detail: '修改 MJLab environment、command、reward、reset 和 termination，先做短训练 smoke test。' },
+  { level: 'Level 3', title: '任务与 Reward 实验室', status: '现在可学 · A/B 实验', detail: '在官方 MuJoCo 中配置 command、reward 与 termination，采集真实 rollout 并比较 return。' },
   { level: 'Level 4', title: '训练与评估 Policy', status: '需要 NVIDIA GPU / HF Jobs', detail: '并行 rollout、PPO 训练、checkpoint 对比、录像与指标评估，排查 reward hacking。' },
   { level: 'Level 5', title: '发布 ONNX Skill', status: '官方接口已具备', detail: '导出 [1,61] → [1,14] ONNX，生成 manifest，放进浏览器竞技场和 Hugging Face Hub。' },
   { level: 'Level 6', title: '部署到真实 Microduck', status: '硬件到货后', detail: '通过 robotctl 安装策略，先限速和空载验证，再记录真机 observation 做 sim-to-real 对比。' },
@@ -209,10 +220,14 @@ export default function Home() {
   const [simulatorRunning, setSimulatorRunning] = useState(false);
   const [simulatorStatus, setSimulatorStatus] = useState('正在等待官方模拟器加载…');
   const [simulatorTrace, setSimulatorTrace] = useState<string[]>([]);
-  const [simulatorLabTab, setSimulatorLabTab] = useState<'observe' | 'compose'>('observe');
+  const [simulatorLabTab, setSimulatorLabTab] = useState<'observe' | 'compose' | 'reward'>('observe');
   const [telemetry, setTelemetry] = useState<SimulatorTelemetry | null>(null);
   const [telemetryPaused, setTelemetryPaused] = useState(false);
   const [level1Completed, setLevel1Completed] = useState<number[]>([]);
+  const [rewardConfigs, setRewardConfigs] = useState<Record<RewardSlot, RewardConfig>>(defaultRewardConfigs);
+  const [rewardResults, setRewardResults] = useState<Partial<Record<RewardSlot, RolloutResult>>>({});
+  const [rewardRunning, setRewardRunning] = useState<RewardSlot | null>(null);
+  const [level3Completed, setLevel3Completed] = useState<number[]>([]);
   const workerRef = useRef<Worker | null>(null);
   const simulatorFrameRef = useRef<HTMLIFrameElement | null>(null);
   const profileInputRef = useRef<HTMLInputElement | null>(null);
@@ -222,6 +237,7 @@ export default function Home() {
   const driveTimerRef = useRef<number | null>(null);
   const driveBaselineRef = useRef<number[] | null>(null);
   const scriptRunIdRef = useRef(0);
+  const rewardRunIdRef = useRef(0);
 
   const lesson = lessons[currentId - 1];
   const rlContext = rlContexts[currentId];
@@ -245,6 +261,14 @@ export default function Home() {
         }
         if (typeof parsed.simulatorRuns === 'number') setSimulatorRuns(parsed.simulatorRuns);
         if (Array.isArray(parsed.level1Completed)) setLevel1Completed(parsed.level1Completed);
+        if (parsed.rewardConfigs) {
+          setRewardConfigs({
+            A: sanitizeRewardConfig(parsed.rewardConfigs.A ?? {}, defaultRewardConfigs.A),
+            B: sanitizeRewardConfig(parsed.rewardConfigs.B ?? {}, defaultRewardConfigs.B),
+          });
+        }
+        if (parsed.rewardResults && typeof parsed.rewardResults === 'object') setRewardResults(parsed.rewardResults);
+        if (Array.isArray(parsed.level3Completed)) setLevel3Completed(parsed.level3Completed);
       }
     } catch {
       // A damaged local save should never prevent the classroom from opening.
@@ -255,11 +279,12 @@ export default function Home() {
   useEffect(() => {
     if (!hydrated) return;
     const saved: SavedProgress = {
-      schemaVersion: 4, currentId, completed, solutions, simulatorScript, simulatorRuns, level1Completed,
+      schemaVersion: 5, currentId, completed, solutions, simulatorScript, simulatorRuns, level1Completed,
+      rewardConfigs, rewardResults, level3Completed,
       updatedAt: new Date().toISOString(),
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-  }, [completed, currentId, hydrated, level1Completed, simulatorRuns, simulatorScript, solutions]);
+  }, [completed, currentId, hydrated, level1Completed, level3Completed, rewardConfigs, rewardResults, simulatorRuns, simulatorScript, solutions]);
 
   useEffect(() => {
     if (view !== 'simulator') return;
@@ -386,6 +411,8 @@ export default function Home() {
     setResult(null);
     setHintOpen(false);
     setLevel1Completed([]);
+    setRewardResults({});
+    setLevel3Completed([]);
   };
   const nextLesson = () => {
     if (currentId >= lessons.length) setView('simulator');
@@ -658,9 +685,125 @@ export default function Home() {
     addSimulatorTrace('STOP · command = [0, 0, 0]');
     setSimulatorStatus('控制程序已停止，command 已清零');
   };
+  const updateRewardConfig = (slot: RewardSlot, config: RewardConfig) => {
+    setRewardConfigs((previous) => ({ ...previous, [slot]: sanitizeRewardConfig(config, previous[slot]) }));
+    setLevel3Completed((previous) => previous.includes(1) ? previous : [...previous, 1].sort((a, b) => a - b));
+  };
+  const runRewardRollout = async (slot: RewardSlot) => {
+    const rl = getSimulator();
+    const source = ensureAcademySource();
+    if (!rl || !source || rewardRunning || simulatorRunning) return;
+    const config = sanitizeRewardConfig(rewardConfigs[slot], defaultRewardConfigs[slot]);
+    const runId = rewardRunIdRef.current + 1;
+    rewardRunIdRef.current = runId;
+    setRewardRunning(slot);
+    setTelemetryPaused(false);
+    setSimulatorStatus(`实验 ${slot} · 正在重置并准备真实 rollout`);
+
+    let sampleCount = 0;
+    let weightedReturn = 0;
+    let speedSum = 0;
+    let trackingErrorSum = 0;
+    let effortSum = 0;
+    let smoothnessSum = 0;
+    let previousAction: number[] | null = null;
+    let ended: RolloutResult['terminatedBy'] = 'timeout';
+    let startedAt = performance.now();
+    let previousAt = startedAt;
+
+    try {
+      rl.clearCustomPolicy();
+      if (rl.loco !== 'legs') await rl.setLoco('legs');
+      rl.resetSim();
+      const settleDeadline = performance.now() + 2500;
+      while ((rl.inputLocked || rl.respawnActive) && performance.now() < settleDeadline) {
+        await new Promise((resolve) => window.setTimeout(resolve, 50));
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+      if (rewardRunIdRef.current !== runId) ended = 'stopped';
+      else {
+        source.command[0] = config.targetSpeed;
+        source.command[1] = 0;
+        source.command[2] = 0;
+        source.active = true;
+        startedAt = performance.now();
+        previousAt = startedAt;
+        setSimulatorStatus(`实验 ${slot} · command vx=${config.targetSpeed.toFixed(2)} m/s · 正在采样`);
+      }
+
+      while (ended !== 'stopped' && performance.now() - startedAt < config.durationMs) {
+        await new Promise((resolve) => window.setTimeout(resolve, 50));
+        if (rewardRunIdRef.current !== runId) { ended = 'stopped'; break; }
+        const now = performance.now();
+        const action = Array.from(rl.lastAction);
+        const observation = Array.from(rl.buildObs());
+        const sample = {
+          velocityX: planarSpeedFromState(rl.data.qvel),
+          gravityZ: observation[5],
+          height: Number(rl.data.qpos[2]),
+          action,
+        };
+        const breakdown = scoreRewardSample(config, sample, previousAction);
+        const dt = Math.min(0.1, Math.max(0, (now - previousAt) / 1000));
+        weightedReturn += breakdown.reward * dt;
+        speedSum += sample.velocityX;
+        trackingErrorSum += Math.abs(sample.velocityX - config.targetSpeed);
+        effortSum += breakdown.effort;
+        smoothnessSum += breakdown.smoothness;
+        sampleCount += 1;
+        previousAction = action;
+        previousAt = now;
+        const reason = terminationReason(config, sample);
+        if (reason) { ended = reason; break; }
+      }
+    } catch {
+      ended = 'stopped';
+    } finally {
+      source.active = false;
+      source.command.fill(0);
+    }
+
+    const durationSeconds = Math.max(0, (performance.now() - startedAt) / 1000);
+    const divisor = Math.max(1, sampleCount);
+    const rollout: RolloutResult = {
+      slot, config, samples: sampleCount, durationSeconds,
+      returnValue: weightedReturn,
+      meanSpeed: speedSum / divisor,
+      meanTrackingError: trackingErrorSum / divisor,
+      meanEffort: effortSum / divisor,
+      meanSmoothness: smoothnessSum / divisor,
+      terminatedBy: ended,
+      capturedAt: Date.now(),
+    };
+    if (sampleCount > 0) {
+      setRewardResults((previous) => ({ ...previous, [slot]: rollout }));
+      const hasComparison = Boolean(rewardResults[slot === 'A' ? 'B' : 'A']);
+      setLevel3Completed((missions) => hasComparison
+        ? [1, 2, 3, 4]
+        : Array.from(new Set([...missions, 1, slot === 'A' ? 2 : 3])).sort((a, b) => a - b));
+      setSimulatorStatus(`实验 ${slot} 完成 · return=${weightedReturn.toFixed(3)} · ${sampleCount} samples · ${ended}`);
+    } else setSimulatorStatus(`实验 ${slot} 未采到有效数据，请重新运行`);
+    if (rewardRunIdRef.current === runId) setRewardRunning(null);
+  };
+  const stopRewardRollout = () => {
+    rewardRunIdRef.current += 1;
+    const source = ensureAcademySource();
+    if (source) { source.active = false; source.command.fill(0); }
+    setRewardRunning(null);
+    setSimulatorStatus('Reward rollout 已停止，command 已清零');
+  };
+  const resetRewardLab = () => {
+    stopRewardRollout();
+    getSimulator()?.resetSim();
+    setRewardConfigs({ A: { ...defaultRewardConfigs.A }, B: { ...defaultRewardConfigs.B } });
+    setRewardResults({});
+    setLevel3Completed([]);
+    setSimulatorStatus('Level 3 已重置');
+  };
   const exportProfile = () => {
     const profile: SavedProgress = {
-      schemaVersion: 4, currentId, completed, solutions, simulatorScript, simulatorRuns, level1Completed,
+      schemaVersion: 5, currentId, completed, solutions, simulatorScript, simulatorRuns, level1Completed,
+      rewardConfigs, rewardResults, level3Completed,
       updatedAt: new Date().toISOString(),
     };
     const url = URL.createObjectURL(new Blob([JSON.stringify(profile, null, 2)], { type: 'application/json' }));
@@ -680,6 +823,12 @@ export default function Home() {
       if (typeof profile.simulatorScript === 'string') setSimulatorScript(profile.simulatorScript);
       if (typeof profile.simulatorRuns === 'number') setSimulatorRuns(profile.simulatorRuns);
       if (Array.isArray(profile.level1Completed)) setLevel1Completed(profile.level1Completed.filter((id) => Number.isInteger(id) && id >= 1 && id <= 6));
+      if (profile.rewardConfigs) setRewardConfigs({
+        A: sanitizeRewardConfig(profile.rewardConfigs.A ?? {}, defaultRewardConfigs.A),
+        B: sanitizeRewardConfig(profile.rewardConfigs.B ?? {}, defaultRewardConfigs.B),
+      });
+      if (profile.rewardResults && typeof profile.rewardResults === 'object') setRewardResults(profile.rewardResults);
+      if (Array.isArray(profile.level3Completed)) setLevel3Completed(profile.level3Completed.filter((id) => Number.isInteger(id) && id >= 1 && id <= 4));
     } catch {
       window.alert('这不是有效的 Microduck 学习档案 JSON。');
     }
@@ -775,20 +924,25 @@ export default function Home() {
               <div className="studio-tabs" role="tablist" aria-label="实验类型">
                 <button role="tab" aria-selected={simulatorLabTab === 'observe'} onClick={() => setSimulatorLabTab('observe')}>Level 1 · 观察策略</button>
                 <button role="tab" aria-selected={simulatorLabTab === 'compose'} onClick={() => setSimulatorLabTab('compose')}>Level 2 · 控制编程</button>
+                <button role="tab" aria-selected={simulatorLabTab === 'reward'} onClick={() => setSimulatorLabTab('reward')}>Level 3 · Reward 实验</button>
               </div>
               {simulatorLabTab === 'observe' ? <SimulatorInspector
                 telemetry={telemetry} completed={level1Completed} paused={telemetryPaused} entered={simulatorEntered}
                 onTogglePause={() => setTelemetryPaused((value) => !value)} onSnapshot={snapshotTelemetry}
                 onDrive={driveFromAcademy} onRoll={() => invokeSimulatorAction('roll')} onReset={resetLevelOneExperiment} onReplay={replayLevelOne}
-              /> : <ControlStudio
+              /> : simulatorLabTab === 'compose' ? <ControlStudio
                 entered={simulatorEntered} running={simulatorRunning} status={simulatorStatus}
                 script={simulatorScript} trace={simulatorTrace} onScriptChange={setSimulatorScript}
                 onRun={() => void runSimulatorScript()} onStop={stopSimulatorScript} onQuick={invokeSimulatorAction}
+              /> : <RewardLabStudio
+                entered={simulatorEntered} configs={rewardConfigs} results={rewardResults}
+                running={rewardRunning} completed={level3Completed} onConfigChange={updateRewardConfig}
+                onRun={(slot) => void runRewardRollout(slot)} onStop={stopRewardRollout} onReset={resetRewardLab}
               />}
             </aside>
             <div className="simulator-frame-wrap"><iframe ref={simulatorFrameRef} src="/microduck-simulator/?boot=1" title="Microduck 官方 3D 模拟器" allow="autoplay; fullscreen" /></div>
           </div>
-          <p className="truth-note"><strong>两种“编程”：</strong>Level 2 编写的是实时控制程序，它读取 observation、发送 command 并切换已有 policy；Level 3–5 才修改 reward、跑 PPO、训练和导出全新的 ONNX policy。</p>
+          <p className="truth-note"><strong>三个层次：</strong>Level 2 编写实时控制程序；Level 3 用真实 rollout 设计和检验 reward；Level 4 才运行 PPO 来更新神经网络权重。只有训练并导出新的 ONNX，鸭子的动作策略才真正改变。</p>
         </section>
       ) : (
         <div className="academy-shell">

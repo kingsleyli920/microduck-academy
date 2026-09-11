@@ -28,11 +28,12 @@ Open `http://localhost:3210`, select **3D Lab**, and run a `control.duck` progra
 - Level 0: nine guided lessons covering rewards, observations, actions, commands, rollouts, exploration, returns, PPO, reward hacking, and deployment safety
 - Level 1: six experiments against the simulator's real 61D observation, 13D command, and 14D action contract
 - Level 2: a bounded `control.duck` language with 25 documented API entries for continuous control, feedback logic, built-in skills, and compatible community moves
+- Level 3: a Task & Reward Lab that evaluates two reward configurations with real MuJoCo rollouts and compares return, tracking error, action energy, and termination
 - Browser-local Python through Pyodide; progress stays in `localStorage` and can be exported as JSON
 
 No account is required. The classroom does not record the screen or upload learner progress, code, or experiment history. See [PRIVACY.md](PRIVACY.md).
 
-Task authoring, PPO training, ONNX publishing, and physical robot deployment are planned work. The current release is a simulator programming preview, not a complete training or hardware platform.
+PPO training, ONNX publishing, and physical robot deployment are planned work. Level 3 evaluates an existing policy under configurable rewards; it does not update the ONNX weights. The current release is not a complete training or hardware platform.
 
 ## Run from source
 

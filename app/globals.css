@@ -233,7 +233,7 @@
 .scope-reference p { margin: 0.3rem 0 !important; color: oklch(0.66 0.025 80); font-size: 0.55rem !important; line-height: 1.45; }
 .scope-reference b { color: oklch(0.82 0.06 85); }
 .scope-reference code { color: oklch(0.76 0.12 145); font: 0.54rem var(--font-mono); }
-.studio-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.25rem; padding: 0.2rem; border-radius: 0.55rem; background: oklch(0.14 0.018 68); }
+.studio-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.25rem; padding: 0.2rem; border-radius: 0.55rem; background: oklch(0.14 0.018 68); }
 .studio-tabs button { padding: 0.45rem 0.35rem; border: 0; border-radius: 0.4rem; background: transparent; color: oklch(0.66 0.025 80); font-size: 0.68rem; cursor: pointer; }
 .studio-tabs button[aria-selected='true'] { background: oklch(0.3 0.05 58); color: oklch(0.96 0.04 90); box-shadow: inset 0 0 0 1px oklch(0.44 0.08 58); }
 .policy-inspector { display: grid; gap: 0.65rem; min-height: 0; }
@@ -284,6 +284,49 @@
 .simulator-frame-wrap { overflow: hidden; border: 1px solid oklch(0.38 0.03 75); border-radius: 0.8rem; background: #08080c; box-shadow: 0 20px 50px #0008; }
 .simulator-frame-wrap iframe { display: block; width: 100%; height: 100%; min-height: 32rem; border: 0; }
 .truth-note { padding: 0.7rem 0.85rem; border-radius: 0.55rem; background: oklch(0.22 0.025 70); color: oklch(0.77 0.025 80); font-size: 0.78rem; }
+
+.reward-lab { min-height: 0; display: grid; gap: 0.65rem; }
+.reward-intro { border-left-color: oklch(0.7 0.14 145); }
+.reward-missions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.3rem; }
+.reward-missions > div { display: grid; grid-template-columns: auto 1fr; gap: 0.3rem; padding: 0.35rem; border-radius: 0.35rem; background: oklch(0.16 0.018 68); opacity: 0.48; }
+.reward-missions > div.done { opacity: 1; }
+.reward-missions svg { width: 0.72rem; height: 0.72rem; margin-top: 0.08rem; color: oklch(0.56 0.025 80); }
+.reward-missions .done svg { color: oklch(0.72 0.16 145); }
+.reward-missions b, .reward-missions small { display: block; }
+.reward-missions b { font-size: 0.55rem; } .reward-missions small { margin-top: 0.08rem; color: oklch(0.58 0.025 80); font-size: 0.48rem; line-height: 1.25; }
+.reward-configs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem; }
+.reward-configs > section { min-width: 0; padding: 0.55rem; display: grid; gap: 0.45rem; border: 1px solid oklch(0.37 0.045 70); border-radius: 0.5rem; background: oklch(0.16 0.018 68); }
+.reward-configs > section:first-child { border-color: oklch(0.48 0.11 200); }
+.reward-configs > section:last-child { border-color: oklch(0.48 0.12 52); }
+.reward-configs header, .reward-configs header > div { display: flex; align-items: center; justify-content: space-between; gap: 0.3rem; }
+.reward-configs header > div { justify-content: start; }
+.reward-configs header svg { width: 0.75rem; color: var(--primary); }
+.reward-configs header b { font-size: 0.63rem; } .reward-configs header span { color: oklch(0.58 0.03 80); font-size: 0.5rem; }
+.reward-fields { display: grid; gap: 0.28rem; }
+.reward-fields label { display: grid; grid-template-columns: 1fr 4.2rem; align-items: center; gap: 0.35rem; }
+.reward-fields label > span { font-size: 0.52rem; font-weight: 700; }
+.reward-fields label small { display: block; margin-top: 0.05rem; color: oklch(0.53 0.025 80); font: 0.43rem/1.2 var(--font-mono); }
+.reward-fields input { min-width: 0; width: 100%; padding: 0.28rem; border: 1px solid oklch(0.35 0.03 70); border-radius: 0.3rem; outline: 0; background: oklch(0.11 0.014 68); color: oklch(0.86 0.05 90); text-align: right; font: 0.55rem var(--font-mono); }
+.reward-fields input:focus { border-color: var(--primary); }
+.reward-configs button { height: 1.9rem; font-size: 0.58rem; }
+.reward-results { display: grid; grid-template-columns: 1fr 1fr; gap: 0.45rem; }
+.reward-result { padding: 0.55rem; border: 1px solid oklch(0.33 0.025 70); border-radius: 0.5rem; background: oklch(0.14 0.016 68); }
+.reward-result.has-result { border-color: oklch(0.45 0.09 145); }
+.reward-result > div:first-child { display: flex; justify-content: space-between; gap: 0.3rem; }
+.reward-result b { font-size: 0.58rem; } .reward-result > div > span { color: oklch(0.56 0.03 80); font: 0.45rem var(--font-mono); }
+.reward-result > strong { display: block; margin: 0.35rem 0; color: oklch(0.78 0.15 145); font: 700 1rem var(--font-mono); }
+.reward-result > strong small { color: oklch(0.56 0.03 80); font-size: 0.48rem; }
+.reward-result dl { display: grid; grid-template-columns: 1fr 1fr; gap: 0.24rem; margin: 0; }
+.reward-result dl div { min-width: 0; padding: 0.25rem; border-radius: 0.25rem; background: oklch(0.19 0.02 68); }
+.reward-result dt { color: oklch(0.54 0.025 80); font-size: 0.44rem; } .reward-result dd { margin: 0.08rem 0 0; overflow: hidden; color: oklch(0.78 0.04 90); font: 0.52rem var(--font-mono); text-overflow: ellipsis; }
+.reward-comparison { padding: 0.55rem; display: grid; grid-template-columns: auto 1fr; gap: 0.25rem 0.4rem; border: 1px solid oklch(0.45 0.1 145); border-radius: 0.5rem; background: oklch(0.19 0.03 145); }
+.reward-comparison svg { width: 0.82rem; color: oklch(0.72 0.16 145); }
+.reward-comparison span { font-size: 0.6rem; } .reward-comparison strong { color: oklch(0.78 0.16 145); font-family: var(--font-mono); }
+.reward-comparison small { grid-column: 2; color: oklch(0.64 0.03 85); font-size: 0.5rem; line-height: 1.4; }
+.reward-equation { padding: 0.5rem; border-radius: 0.45rem; background: oklch(0.12 0.015 68); }
+.reward-equation code, .reward-equation small { display: block; }
+.reward-equation code { color: oklch(0.77 0.1 75); font: 0.54rem/1.45 var(--font-mono); }
+.reward-equation small { margin-top: 0.2rem; color: oklch(0.57 0.025 80); font-size: 0.49rem; }
 
 .roadmap-view { min-height: calc(100vh - 5rem); padding: clamp(1rem, 3vw, 2.5rem); background: linear-gradient(150deg, oklch(0.975 0.018 88), oklch(0.94 0.035 83)); }
 .roadmap-hero { display: flex; align-items: end; justify-content: space-between; gap: 2rem; max-width: 80rem; margin: 0 auto 1.5rem; }

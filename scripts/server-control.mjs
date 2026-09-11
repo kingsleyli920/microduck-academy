@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createServer, request as httpRequest } from 'node:http';
-import { accessSync } from 'node:fs';
+import { accessSync, createReadStream } from 'node:fs';
 import { join } from 'node:path';
 
 const projectDir = join(import.meta.dirname, '..');
@@ -74,6 +74,16 @@ await waitForApp();
 const server = createServer((incoming, outgoing) => {
   if (incoming.method === 'POST' && incoming.url === '/__shutdown') {
     void stopEverything(server, outgoing);
+    return;
+  }
+
+  const pathname = new URL(incoming.url ?? '/', publicUrl).pathname;
+  if (incoming.method === 'GET' && (pathname === '/microduck-simulator' || pathname === '/microduck-simulator/')) {
+    outgoing.writeHead(200, {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'no-store',
+    });
+    createReadStream(join(projectDir, 'public', 'microduck-simulator', 'index.html')).pipe(outgoing);
     return;
   }
 

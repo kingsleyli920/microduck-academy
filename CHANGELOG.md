@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- 增加 Level 3 Task & Reward Lab：为同一个官方 ONNX policy 配置 A/B reward 与 termination，并从真实 MuJoCo 状态采集 rollout。
+- 显示 return、平均速度、跟踪误差、action energy、smoothness 和终止原因；实验与进度保存在本地学习档案。
+- 增加 reward 计算、termination 和配置边界的自动测试。
+
 ## 0.1.0-preview — 2026-09-10
 
 - Added nine browser-local reinforcement learning lessons with Python execution and automatic checks.

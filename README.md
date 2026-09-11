@@ -35,6 +35,7 @@ npm run academy
 - 同屏小实验与官方 MuJoCo + ONNX 3D 模拟器
 - Level 2 控制程序可用 `drive`、`turn`、`look` 连续发送 command，用 `if obs[i]` 和 `repeat` 编写反馈逻辑，也能调用官方 skills、坐站控制和社区策略
 - Level 2 内置可搜索的 25 项完整 `control.duck` Reference；文档以编辑器右侧抽屉打开，示例插入后保持可查。完整中文版见 [`docs/CONTROL_API.zh-CN.md`](docs/CONTROL_API.zh-CN.md)
+- Level 3 Task & Reward Lab 可设置目标速度、四项 reward 权重与两个 termination 条件，用官方 MuJoCo 状态采集 A/B rollout，并比较 return、跟踪误差和 action energy
 - Level 0–6 学习路线、同类开源项目调研与产品架构
 - 版本化 local-first 学习档案，可导出/导入 JSON
 - macOS 一键启动，网页内“停止课堂”可关闭本地服务
@@ -50,6 +51,8 @@ npm run academy
 在“3D 实验场”中，课堂会通过官方的 `?boot=1` 入口自动启动模拟器。Level 2 的控制程序会在运行时读取 observation，并向现有 policy 发送速度、转向和头部 command；`skill()` 用于切换内置 policy，`move(ref)` 可以加载官方 manifest 兼容的 Hub / Academy / ONNX 社区动作。训练全新动态动作需要走任务定义、GPU 训练、ONNX 导出与评估流程。
 
 3D 实验场默认打开“Level 1 · 观察策略”。它从官方 simulator 的实时控制循环读取 observation、action、command 和 mode，并按页面提示依次完成六个实验；切换到“Level 2 · 控制编程”可以运行带循环和 observation 条件分支的程序。
+
+切换到“Level 3 · Reward 实验”可以给同一个官方 walk policy 配置两套评分函数，分别运行真实 rollout 并比较结果。这里是在学习任务定义和评估，不会更新 ONNX 权重；具体公式、指标解释和边界见 [`docs/REWARD_LAB.zh-CN.md`](docs/REWARD_LAB.zh-CN.md)。
 
 当前发布边界见 [`docs/RELEASE_STATUS.zh-CN.md`](docs/RELEASE_STATUS.zh-CN.md)；完整调研、课程结构、账号策略和开源里程碑见 [`docs/OPEN_SOURCE_ROADMAP.zh-CN.md`](docs/OPEN_SOURCE_ROADMAP.zh-CN.md)。
 
