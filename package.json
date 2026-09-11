@@ -4,6 +4,14 @@
   "private": false,
   "license": "Apache-2.0",
   "description": "A local, CodeCombat-style reinforcement learning classroom for Microduck.",
+  "keywords": [
+    "reinforcement-learning",
+    "robotics",
+    "microduck",
+    "mujoco",
+    "onnx",
+    "education"
+  ],
   "homepage": "https://github.com/kingsleyli920/microduck-academy#readme",
   "repository": {
     "type": "git",
@@ -23,9 +31,12 @@
     "academy": "node scripts/server-control.mjs",
     "setup:runtime": "node scripts/setup-runtime.mjs",
     "check:runtime": "node scripts/check-runtime.mjs",
+    "check:docs": "node scripts/check-docs.mjs",
     "check:release": "node scripts/check-release.mjs",
     "sync:simulator": "node scripts/sync-simulator.mjs",
-    "lint": "oxlint app",
+    "lint": "oxlint app components lib scripts tests",
+    "typecheck": "tsc --noEmit",
+    "verify": "npm run check:release && npm run check:docs && npm test && npm run lint && npm run typecheck && npm run build",
     "format": "oxfmt"
   },
   "dependencies": {

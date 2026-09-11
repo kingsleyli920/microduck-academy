@@ -4,12 +4,17 @@ on:
   push:
   pull_request:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
   source:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -18,6 +23,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check:release
+      - run: npm run check:docs
       - run: npm test
       - run: npm run lint
+      - run: npm run typecheck
       - run: npm run build

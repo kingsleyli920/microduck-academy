@@ -69,7 +69,7 @@ function installSimulator() {
 }
 
 installPyodide();
-const { simulatorDir, actualCommit } = installSimulator();
+const { actualCommit } = installSimulator();
 const pyodideVersion = JSON.parse(readFileSync(join(academyDir, 'node_modules', 'pyodide', 'package.json'), 'utf8')).version;
 writeFileSync(join(academyDir, 'public', 'runtime-versions.json'), `${JSON.stringify({
   simulator: { repository: SIMULATOR_REPOSITORY, commit: actualCommit },

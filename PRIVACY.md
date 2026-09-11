@@ -2,10 +2,10 @@
 
 Microduck Academy v0.1 is local-first and does not require an account.
 
-- Lesson progress, lesson code, Level 1 completion, the current `control.duck` program, and its run count are stored in browser `localStorage` under `microduck-academy-progress-v1`.
+- Lesson progress, lesson code, Level 1 completion, the current `control.duck` program, its run count, and Level 3 reward configurations and aggregate rollout results are stored in browser `localStorage` under `microduck-academy-progress-v1`.
 - The Learning Path page can export and import this small learning profile as JSON.
 - The classroom does not record the screen, camera, or microphone.
-- Runtime traces, telemetry history, observations, actions, videos, checkpoints, and ONNX files are not persisted by the current release.
+- Raw runtime traces, per-step telemetry, observations, actions, videos, checkpoints, and ONNX files are not persisted by the current release. Level 3 keeps aggregate metrics such as return, mean speed, tracking error, action energy, and termination reason.
 - The local Node.js service serves the application and exposes the user-triggered shutdown endpoint. It does not receive learner code or progress.
 - A community policy reference may fetch a manifest or ONNX file from the URL explicitly supplied by the learner.
 
@@ -13,10 +13,10 @@ Clearing site data, changing browser profiles, using private browsing, or changi
 
 Microduck Academy v0.1 采用本地优先设计，无需登录。
 
-- 关卡进度、每关代码、Level 1 实验完成状态、当前 `control.duck` 程序和运行次数保存在浏览器 `localStorage` 的 `microduck-academy-progress-v1` 键中。
+- 关卡进度、每关代码、Level 1 实验完成状态、当前 `control.duck` 程序、运行次数，以及 Level 3 的 reward 配置和汇总 rollout 结果，保存在浏览器 `localStorage` 的 `microduck-academy-progress-v1` 键中。
 - “学习路线”页面可以把这份小型学习档案导出或导入为 JSON。
 - 课堂不会录制屏幕、摄像头或麦克风。
-- 当前版本不会持久化运行轨迹、遥测历史、observation、action、录像、checkpoint 或 ONNX 文件。
+- 当前版本不会持久化逐步运行轨迹、原始遥测、observation、action、录像、checkpoint 或 ONNX 文件。Level 3 会保存 return、平均速度、跟踪误差、action energy 和终止原因等汇总指标。
 - 本地 Node.js 服务负责提供页面和执行用户主动触发的关闭操作，不接收学习者代码或进度。
 - 当学习者明确填写社区策略地址时，页面可能从该地址读取 manifest 或 ONNX 文件。
 

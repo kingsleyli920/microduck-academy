@@ -1,10 +1,16 @@
 # Microduck Academy
 
+[![CI](https://github.com/kingsleyli920/microduck-academy/actions/workflows/ci.yml/badge.svg)](https://github.com/kingsleyli920/microduck-academy/actions/workflows/ci.yml)
+[![Preview release](https://img.shields.io/github/v/release/kingsleyli920/microduck-academy?include_prereleases&label=preview)](https://github.com/kingsleyli920/microduck-academy/releases)
+[![License](https://img.shields.io/github/license/kingsleyli920/microduck-academy)](LICENSE)
+
 [English](README.en.md) · 中文
 
 一个面向有软件工程基础、初学强化学习的开发者的 Microduck 强化学习闯关课堂。学习者在同一个页面阅读任务、写 Python、运行真实测试、观察即时可视化，并进入官方 Microduck 3D 模拟器。
 
 这是独立的社区课堂项目，与 Pollen Robotics 或 Hugging Face 没有隶属、合作或背书关系。
+
+**项目状态：公开 Preview。** Level 0–3 已能在本地课堂中运行；PPO 训练、ONNX 导出和真机安装仍在路线图中。能力声明以[发布状态](docs/RELEASE_STATUS.zh-CN.md)为准，运行和数据边界见[架构文档](docs/ARCHITECTURE.md)。
 
 ![Microduck Academy 闯关课堂](docs/assets/course.png)
 
@@ -15,7 +21,7 @@
 ```bash
 git clone https://github.com/kingsleyli920/microduck-academy.git
 cd microduck-academy
-npm install
+npm ci
 npm run setup:runtime
 npm run build
 npm run academy
@@ -35,6 +41,7 @@ npm run academy
 - 同屏小实验与官方 MuJoCo + ONNX 3D 模拟器
 - Level 2 控制程序可用 `drive`、`turn`、`look` 连续发送 command，用 `if obs[i]` 和 `repeat` 编写反馈逻辑，也能调用官方 skills、坐站控制和社区策略
 - Level 2 内置可搜索的 25 项完整 `control.duck` Reference；文档以编辑器右侧抽屉打开，示例插入后保持可查。完整中文版见 [`docs/CONTROL_API.zh-CN.md`](docs/CONTROL_API.zh-CN.md)
+- Level 3 Task & Reward Lab 可设置目标速度、四项 reward 权重与两个 termination 条件，用官方 MuJoCo 状态采集 A/B rollout，并比较 return、跟踪误差和 action energy
 - Level 0–6 学习路线、同类开源项目调研与产品架构
 - 版本化 local-first 学习档案，可导出/导入 JSON
 - macOS 一键启动，网页内“停止课堂”可关闭本地服务
@@ -51,25 +58,25 @@ npm run academy
 
 3D 实验场默认打开“Level 1 · 观察策略”。它从官方 simulator 的实时控制循环读取 observation、action、command 和 mode，并按页面提示依次完成六个实验；切换到“Level 2 · 控制编程”可以运行带循环和 observation 条件分支的程序。
 
+切换到“Level 3 · Reward 实验”可以给同一个官方 walk policy 配置两套评分函数，分别运行真实 rollout 并比较结果。这里是在学习任务定义和评估，不会更新 ONNX 权重；具体公式、指标解释和边界见 [`docs/REWARD_LAB.zh-CN.md`](docs/REWARD_LAB.zh-CN.md)。
+
 当前发布边界见 [`docs/RELEASE_STATUS.zh-CN.md`](docs/RELEASE_STATUS.zh-CN.md)；完整调研、课程结构、账号策略和开源里程碑见 [`docs/OPEN_SOURCE_ROADMAP.zh-CN.md`](docs/OPEN_SOURCE_ROADMAP.zh-CN.md)。
 
 ## 从源码运行
 
-需要 Node.js 22 或更新版本、Git 和 Git LFS。仓库不分发官方模拟器、ONNX、机器人模型或 Pyodide 构建产物；首次安装时会从固定版本的上游源码和 npm 包生成本地运行时。
+需要 Node.js 22 或更新版本、Git 和 Git LFS。仓库不分发官方模拟器、ONNX、机器人模型或 Pyodide 构建产物；首次安装时会从固定版本的上游源码和 npm 包生成本地运行时，因此需要联网并会比普通前端安装更久。
 
 ```bash
-npm install
+npm ci
 npm run setup:runtime
 npm run build
 npm run academy
 ```
 
-浏览器会打开 `http://localhost:3210`。以后修改 Academy 源码时运行：
+浏览器会打开 `http://localhost:3210`。以后修改 Academy 源码时运行统一检查：
 
 ```bash
-npm test
-npm run lint
-npm run build
+npm run verify
 ```
 
 `npm run academy` 会在 `127.0.0.1:3210` 启动带关闭接口的本地代理；内部 Vinext 服务使用 `3211`。服务只监听本机。
@@ -77,6 +84,8 @@ npm run build
 ## 增加关卡
 
 关卡全部定义在 `app/lessons.ts`。每关提供题目、初始代码、提示、函数名和测试数据。`public/python-worker.js` 会在独立 Web Worker 中加载 Pyodide，执行函数并比较结果。
+
+贡献流程见 [`CONTRIBUTING.md`](CONTRIBUTING.md)，使用问题见 [`SUPPORT.md`](SUPPORT.md)，维护和发版步骤见 [`docs/MAINTAINER_GUIDE.md`](docs/MAINTAINER_GUIDE.md)。
 
 ## 与真实强化学习训练的关系
 
