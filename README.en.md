@@ -40,7 +40,7 @@ Open `http://localhost:3210`, select **3D Lab**, and run a `control.duck` progra
 - Chinese and English classroom UI, lessons, API Reference, and repository documentation
 - Browser-local Python through Pyodide; progress stays in `localStorage` and can be exported as JSON
 
-No account is required. The classroom does not record the screen or upload learner progress, code, or experiment history. See [PRIVACY.md](PRIVACY.md).
+No account is required. The classroom does not record the screen or upload learner progress, code, or experiment history. Academy embedded mode disables the upstream simulator multiplayer connection; external network requests occur only when a learner explicitly loads a Hub repository or HTTPS ONNX URL with `move(ref)`. See [PRIVACY.md](PRIVACY.md).
 
 PPO training, ONNX publishing, and physical robot deployment are planned work. Level 3 evaluates an existing policy under configurable rewards; it does not update the ONNX weights. The current release is not a complete training or hardware platform.
 

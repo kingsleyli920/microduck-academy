@@ -42,8 +42,8 @@ export const controlApi: ControlApiEntry[] = [
   },
   {
     id: 'reset', title: '重置物理世界', signature: 'reset()', category: '世界', portability: '仅模拟器',
-    summary: '调用官方模拟器的 resetSim()，恢复鸭子和场景的初始状态。',
-    parameters: ['无参数'], notes: ['真机没有“瞬间复位物理世界”的对应能力。'],
+    summary: '调用官方模拟器的 resetSim()，恢复鸭子和场景的初始状态，并等待重置动画释放输入锁。',
+    parameters: ['无参数'], notes: ['真机没有“瞬间复位物理世界”的对应能力。', '下一条命令会在模拟器重新接受输入后执行。'],
     example: 'reset()', keywords: ['world', 'resetSim', '重置'],
   },
   {
@@ -63,13 +63,13 @@ export const controlApi: ControlApiEntry[] = [
     summary: '执行到这一行时采样 observation；条件成立才执行代码块。',
     parameters: ['i：observation 下标，0～60', '比较符：<、<=、>、>=', 'value：任意有限数字'],
     notes: ['当前只支持单个数值条件；可以嵌套。'],
-    example: 'if obs[5] < -0.85 {\n  skill("roll")\n}', keywords: ['condition', 'observation', 'obs', '条件', '反馈'],
+    example: 'if obs[5] > -0.85 {\n  skill("roll")\n}', keywords: ['condition', 'observation', 'obs', '条件', '反馈'],
   },
   {
     id: 'skill-roll', title: '翻滚策略', signature: 'skill("roll")', category: '技能', portability: '需对应策略',
     summary: '切换到官方已训练好的 roll ONNX policy。', parameters: ['固定技能名 "roll"'],
-    notes: ['触发是非阻塞的；通常在后面加 wait(2500) 等待动作完成。', '这是调用已有 policy，不会训练新动作。'],
-    example: 'skill("roll")\nwait(2500)', keywords: ['policy', 'onnx', '翻滚'],
+    notes: ['触发是非阻塞的；通常在后面加 wait(3200) 等待官方动作与恢复完成。', '这是调用已有 policy，不会训练新动作。'],
+    example: 'skill("roll")\nwait(3200)', keywords: ['policy', 'onnx', '翻滚'],
   },
   {
     id: 'skill-kick', title: '踢球策略', signature: 'skill("kick_left" | "kick_right")', category: '技能', portability: '需对应策略',
@@ -81,13 +81,13 @@ export const controlApi: ControlApiEntry[] = [
     id: 'skill-ground-pick', title: '低头触地策略', signature: 'skill("ground_pick")', category: '技能', portability: '需对应策略',
     summary: '切换到官方 ground-pick ONNX policy。', parameters: ['固定技能名 "ground_pick"'],
     notes: ['触发是非阻塞的；需要用 wait() 留出执行时间。'],
-    example: 'skill("ground_pick")\nwait(2200)', keywords: ['policy', 'onnx', 'ground', '触地'],
+    example: 'skill("ground_pick")\nwait(3000)', keywords: ['policy', 'onnx', 'ground', '触地'],
   },
   {
     id: 'skill-crouch', title: '滚轮底盘下蹲策略', signature: 'skill("crouch")', category: '技能', portability: '需对应策略',
     summary: '在 rollers 模式下触发官方 crouch policy。', parameters: ['固定技能名 "crouch"'],
     notes: ['必须先切换 rollers()；双腿模式会给出错误。'],
-    example: 'rollers()\nwait(600)\nskill("crouch")\nwait(1600)', keywords: ['policy', 'onnx', 'rollers', '下蹲'],
+    example: 'rollers()\nskill("crouch")\nwait(3800)', keywords: ['policy', 'onnx', 'rollers', '下蹲'],
   },
   {
     id: 'ball', title: '生成足球', signature: 'ball()', category: '世界', portability: '仅模拟器',
@@ -129,7 +129,7 @@ export const controlApi: ControlApiEntry[] = [
     id: 'stand', title: '站起', signature: 'stand()', category: '技能', portability: '需对应策略',
     summary: '请求官方控制器从坐姿回到 walk policy。', parameters: ['无参数'],
     notes: ['官方控制器会拒绝不安全的中途切换。'],
-    example: 'stand()\nwait(1200)', keywords: ['sitstand', 'stand', '站起', '起立'],
+    example: 'stand()\nwait(2200)', keywords: ['sitstand', 'stand', '站起', '起立'],
   },
   {
     id: 'walk', title: '回到行走策略', signature: 'walk()', category: '技能', portability: '需对应策略',
@@ -151,9 +151,9 @@ export const controlApi: ControlApiEntry[] = [
   },
   {
     id: 'move', title: '加载社区 / 自定义动作', signature: 'move(ref)', category: '技能', portability: '需对应策略',
-    summary: '使用最新版官方加载器读取 manifest，再校验输入输出形状、有限值和非恒定输出，校验通过后挂载动作。',
-    parameters: ['ref："org/repo"、"session:id[:round]"，或可访问的 HTTPS .onnx URL'],
-    notes: ['社区动作是动态发布的，因此不存在固定的“全部技能名单”。', '支持 perpetual gait / sitstand、episodic trick 和 command script 三种 manifest kind。', '加载失败时官方策略保持启用。'],
+    summary: '使用固定版本的官方加载器读取 manifest，再校验输入输出形状、有限值和非恒定输出，校验通过后挂载动作。',
+    parameters: ['ref："org/repo"，或可访问的 HTTPS .onnx URL'],
+    notes: ['社区动作是动态发布的，因此不存在固定的“全部技能名单”。', '支持 perpetual gait / sitstand、episodic trick 和 command script 三种 manifest kind。', '直接 ONNX URL 没有同目录 manifest 时按 perpetual walk policy 挂载。', '加载失败时官方策略保持启用。'],
     example: 'move("org/repo")', keywords: ['community', 'custom', 'hub', 'policy', 'manifest', '社区', '自定义', '加载'],
   },
   {

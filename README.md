@@ -42,12 +42,12 @@ npm run academy
 - 自动保存当前关卡、已完成关卡和代码
 - 同屏测试结果与官方 MuJoCo + ONNX 3D 模拟器
 - Level 2 控制程序可用 `drive`、`turn`、`look` 连续发送 command，用 `if obs[i]` 和 `repeat` 编写反馈逻辑，也能调用官方 skills、坐站控制和社区策略
-- Level 2 内置可搜索的 25 项完整 `control.duck` Reference；文档以编辑器右侧抽屉打开，示例插入后保持可查。完整中文版见 [`docs/CONTROL_API.zh-CN.md`](docs/CONTROL_API.zh-CN.md)
+- Level 2 内置可搜索的 25 项 `control.duck` Reference；文档以编辑器右侧抽屉打开，示例插入后保持可查。中文版见 [`docs/CONTROL_API.zh-CN.md`](docs/CONTROL_API.zh-CN.md)
 - Level 3 Task & Reward Lab 可设置目标速度、四项 reward 权重与两个 termination 条件，用官方 MuJoCo 状态采集 A/B rollout，并比较 return、跟踪误差和 action energy
 - 中英文课堂界面、课程内容、API Reference 和仓库文档
 - Level 0–6 学习路线、同类开源项目调研与产品架构
 - 版本化 local-first 学习档案，可导出/导入 JSON
-- macOS 一键启动，网页内“停止课堂”可关闭本地服务
+- macOS 启动脚本；网页内“停止课堂”可关闭本地服务
 
 ## 学习者怎么用
 
@@ -55,9 +55,9 @@ npm run academy
 
 页面右上角的“停止课堂”会关闭本地 Node.js 服务。学习进度保存在浏览器的 `localStorage` 中；“学习路线”页可以导出或导入完整学习档案。
 
-课堂不要求登录，不录制屏幕，也不会把学习进度、代码或实验记录上传到服务端。完整说明见 [`PRIVACY.md`](PRIVACY.md)。
+课堂不要求登录，不录制屏幕，也不会把学习进度、代码或实验记录上传到服务端。Academy 嵌入模式会关闭上游模拟器的多人同步；只有学习者主动执行 `move(ref)` 时，页面才会请求所选 Hub 仓库或 HTTPS ONNX 地址。完整说明见 [`PRIVACY.md`](PRIVACY.md)。
 
-在“3D 实验场”中，课堂会通过官方的 `?boot=1` 入口自动启动模拟器。Level 2 的控制程序会在运行时读取 observation，并向现有 policy 发送速度、转向和头部 command；`skill()` 用于切换内置 policy，`move(ref)` 可以加载官方 manifest 兼容的 Hub / Academy / ONNX 社区动作。训练全新动态动作需要走任务定义、GPU 训练、ONNX 导出与评估流程。
+在“3D 实验场”中，课堂会通过官方的 `?boot=1&academy=1` 单人入口自动启动模拟器。Level 2 的控制程序会在运行时读取 observation，并向现有 policy 发送速度、转向和头部 command；`skill()` 用于切换内置 policy，`move(ref)` 可以加载官方 manifest 兼容的 Hub / HTTPS ONNX 社区动作。训练全新动态动作需要走任务定义、GPU 训练、ONNX 导出与评估流程。
 
 3D 实验场默认打开“Level 1 · 观察策略”。它从官方 simulator 的实时控制循环读取 observation、action、command 和 mode，并按页面提示依次完成六个实验；切换到“Level 2 · 控制编程”可以运行带循环和 observation 条件分支的程序。
 

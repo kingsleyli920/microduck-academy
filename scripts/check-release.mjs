@@ -32,6 +32,10 @@ const forbiddenText = [
 ];
 
 const problems = [];
+const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
+if (packageJson.private !== true) {
+  problems.push('package.json: must set private=true to prevent accidental npm publication');
+}
 for (const file of candidates) {
   if (forbiddenPaths.some((prefix) => file === prefix.slice(0, -1) || file.startsWith(prefix))) {
     problems.push(`${file}: generated or third-party runtime must stay out of Git`);

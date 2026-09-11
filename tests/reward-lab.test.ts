@@ -6,8 +6,8 @@ import { defaultRewardConfigs, planarSpeedFromState, sanitizeRewardConfig, score
 void test('tracking reward prefers velocity close to the target', () => {
   const config = defaultRewardConfigs.A;
   const base = { gravityZ: -1, height: 0.3, action: Array(14).fill(0) };
-  const exact = scoreRewardSample(config, { ...base, velocityX: config.targetSpeed }, null);
-  const far = scoreRewardSample(config, { ...base, velocityX: -0.2 }, null);
+  const exact = scoreRewardSample(config, { ...base, planarSpeed: config.targetSpeed }, null);
+  const far = scoreRewardSample(config, { ...base, planarSpeed: 0.8 }, null);
   assert.ok(exact.tracking > far.tracking);
   assert.ok(exact.reward > far.reward);
 });
@@ -15,7 +15,7 @@ void test('tracking reward prefers velocity close to the target', () => {
 void test('effort and action changes subtract from reward', () => {
   const config = defaultRewardConfigs.A;
   const action = Array(14).fill(0.6);
-  const scored = scoreRewardSample(config, { velocityX: config.targetSpeed, gravityZ: -1, height: 0.3, action }, Array(14).fill(0));
+  const scored = scoreRewardSample(config, { planarSpeed: config.targetSpeed, gravityZ: -1, height: 0.3, action }, Array(14).fill(0));
   assert.ok(scored.effort > 0);
   assert.ok(scored.smoothness > 0);
   assert.ok(scored.reward < config.trackingWeight + config.uprightWeight);
@@ -23,7 +23,7 @@ void test('effort and action changes subtract from reward', () => {
 
 void test('termination reports tilt and low trunk height', () => {
   const config = defaultRewardConfigs.A;
-  const stable = { velocityX: 0, gravityZ: -0.9, height: 0.3, action: [] };
+  const stable = { planarSpeed: 0, gravityZ: -0.9, height: 0.3, action: [] };
   assert.equal(terminationReason(config, stable), null);
   assert.equal(terminationReason(config, { ...stable, gravityZ: -0.4 }), 'tilt');
   assert.equal(terminationReason(config, { ...stable, height: 0.01 }), 'height');

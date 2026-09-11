@@ -13,6 +13,8 @@ This project integrates software and assets from the following upstream projects
 
 No top-level license file or Space license metadata was present in the simulator checkout inspected on 2026-09-10 (commit `023172c8a7d629b5258d90364c13bafe013abbfa`). These generated directories are ignored by Git and are fetched from the upstream repository by `npm run setup:runtime`; they must not be committed or redistributed until their terms are confirmed.
 
+The local build applies one narrow compatibility fix before compilation, then restores the upstream checkout: it retains the leg model's ankle body IDs when switching from rollers back to legs. This prevents the pinned simulator's footstep-audio loop from reading missing address metadata. The generated patched bundle remains ignored and is not redistributed.
+
 The related official runtime and training repositories do declare Apache-2.0:
 
 - <https://github.com/pollen-robotics/microduck>

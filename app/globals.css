@@ -30,8 +30,8 @@
 
 @layer base {
   * { @apply border-border outline-ring/50; }
-  html { @apply font-sans; }
-  body { @apply bg-background text-foreground; }
+  html { @apply font-sans; max-width: 100%; overflow-x: hidden; }
+  body { @apply bg-background text-foreground; max-width: 100%; overflow-x: hidden; }
   button { cursor: pointer; }
   button:disabled { cursor: not-allowed; }
 }
@@ -386,14 +386,21 @@
   .reference-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 650px) {
-  .academy-header { grid-template-columns: auto 1fr auto; padding: 0.75rem; gap: 0.65rem; }
-  .stop-button { grid-column: 1 / -1; }
+  .academy-header { grid-template-columns: auto minmax(0, 1fr); padding: 0.75rem; gap: 0.65rem; }
+  .brand-copy { min-width: 0; }
+  .academy-header h1 { overflow-wrap: anywhere; }
+  .view-switcher { grid-column: 1 / -1; grid-row: auto; width: 100%; min-width: 0; }
+  .view-switcher > * { min-width: 0; padding-inline: 0.45rem; font-size: 0.72rem; }
+  .language-switcher { grid-column: 1 / -1; justify-self: stretch; justify-content: center; min-width: 0; }
+  .stop-button { grid-column: 1 / -1; width: 100%; }
   .academy-shell { display: block; }
   .lesson-map { border-right: 0; border-bottom: 1px solid var(--border); padding: 0.85rem; }
   .lesson-map ol { margin: 0.5rem 0; }
   .lesson-map li { display: none; } .lesson-map li.active { display: block; }
   .map-simulator-button { display: none; }
   .lesson-brief, .coding-desk { padding: 1rem; }
+  .system-role-card > div { display: grid; }
+  .system-role-card strong { min-width: 0; overflow-wrap: anywhere; }
   .concept-flow { grid-template-columns: 1fr; }
   .duck-runner.did-pass { transform: translateX(calc(100vw - 8rem)); }
   .pass-actions, .simulator-toolbar, .roadmap-hero { align-items: stretch; flex-direction: column; }

@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 
@@ -16,6 +16,11 @@ export const metadata: Metadata = {
   title: 'Microduck Academy',
   description: 'A bilingual, local-first reinforcement learning classroom for Microduck.',
   icons: { icon: '/favicon.svg' },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({

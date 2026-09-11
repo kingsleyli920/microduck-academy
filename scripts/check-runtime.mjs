@@ -28,4 +28,13 @@ if (manifest.simulator?.commit !== SIMULATOR_COMMIT) {
   console.error(`模拟器版本不匹配：需要 ${SIMULATOR_COMMIT}。`);
   process.exit(1);
 }
+if (!manifest.simulator?.patches?.includes('preserve-leg-ankle-ids')) {
+  console.error('模拟器运行时缺少 legs/rollers 往返切换兼容补丁；请重新运行 npm run setup:runtime。');
+  process.exit(1);
+}
+const embeddedSimulator = readFileSync(join(academyDir, 'public', 'microduck-simulator', 'index.html'), 'utf8');
+if (!embeddedSimulator.includes("dataset.academyNetworkMode = 'local-only'")) {
+  console.error('嵌入模拟器缺少 Academy 单人网络保护；请重新运行 npm run setup:runtime。');
+  process.exit(1);
+}
 console.log(`runtime-ok: simulator ${SIMULATOR_COMMIT.slice(0, 7)}, Pyodide ${manifest.pyodide?.version}`);

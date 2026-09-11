@@ -6,6 +6,7 @@ import { PYODIDE_FILES, SIMULATOR_COMMIT, SIMULATOR_REPOSITORY } from './runtime
 
 const academyDir = resolve(import.meta.dirname, '..');
 const vendorDir = join(academyDir, 'vendor', 'microduck-simulator');
+const simulatorPatches = ['preserve-leg-ankle-ids'];
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, { stdio: 'inherit', ...options });
@@ -59,8 +60,23 @@ function installSimulator() {
 
   const simulatorApp = join(simulatorDir, 'app');
   run('npm', ['ci'], { cwd: simulatorApp });
-  run('npm', ['test'], { cwd: simulatorApp });
-  run('npm', ['run', 'build'], { cwd: simulatorApp });
+  const gameSource = join(simulatorApp, 'src', 'game', 'game.js');
+  const originalGameSource = readFileSync(gameSource, 'utf8');
+  const legsAddressBlock = 'qposAdr, dofAdr, gyroAdr, trunkId, standKeyId, ballQposAdr, ballDofAdr, extraJoints,\n  };';
+  if (!originalGameSource.includes(legsAddressBlock)) {
+    throw new Error('固定模拟器版本的 locomotion address block 已变化；请先审查兼容补丁。');
+  }
+  writeFileSync(gameSource, originalGameSource.replace(
+    legsAddressBlock,
+    'qposAdr, dofAdr, gyroAdr, trunkId, standKeyId, ballQposAdr, ballDofAdr, extraJoints, ankleIds,\n  };',
+  ));
+  try {
+    run('npm', ['test'], { cwd: simulatorApp });
+    run('npm', ['run', 'build'], { cwd: simulatorApp });
+    writeFileSync(join(simulatorApp, 'dist', '.microduck-academy-patches.json'), `${JSON.stringify(simulatorPatches)}\n`);
+  } finally {
+    writeFileSync(gameSource, originalGameSource);
+  }
   run('node', [join(academyDir, 'scripts', 'sync-simulator.mjs')], {
     cwd: academyDir,
     env: { ...process.env, MICRODUCK_SIMULATOR_DIR: simulatorDir },
@@ -72,7 +88,7 @@ installPyodide();
 const { actualCommit } = installSimulator();
 const pyodideVersion = JSON.parse(readFileSync(join(academyDir, 'node_modules', 'pyodide', 'package.json'), 'utf8')).version;
 writeFileSync(join(academyDir, 'public', 'runtime-versions.json'), `${JSON.stringify({
-  simulator: { repository: SIMULATOR_REPOSITORY, commit: actualCommit },
+  simulator: { repository: SIMULATOR_REPOSITORY, commit: actualCommit, patches: simulatorPatches },
   pyodide: { version: pyodideVersion },
 }, null, 2)}\n`);
 console.log('运行时安装完成。下一步运行 npm run build && npm run academy。');

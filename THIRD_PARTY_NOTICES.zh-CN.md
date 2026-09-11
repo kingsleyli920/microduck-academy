@@ -13,6 +13,8 @@
 
 截至 2026-09-10 检查的 simulator 提交 `023172c8a7d629b5258d90364c13bafe013abbfa`，其 checkout 中没有顶层许可证文件，Space 元数据也未声明许可证。这些生成目录由 Git 忽略，并通过 `npm run setup:runtime` 从上游仓库获取。在许可条款确认前，不应提交或重新分发这些目录。
 
+本地构建会在编译前应用一处最小兼容修复，编译后恢复上游 checkout：从滚轮切回双腿时保留腿部模型的脚踝 body ID，避免固定版本模拟器的脚步声音循环读取缺失地址。修复后的生成 bundle 仍被 Git 忽略，不会随仓库重新分发。
+
 相关的官方运行时和训练仓库声明了 Apache-2.0：
 
 - <https://github.com/pollen-robotics/microduck>

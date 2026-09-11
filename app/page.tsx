@@ -19,6 +19,7 @@ import {
   defaultRewardConfigs, planarSpeedFromState, sanitizeRewardConfig, scoreRewardSample, terminationReason,
   type RewardConfig, type RewardSlot, type RolloutResult,
 } from './reward-lab';
+import { sanitizeLearningProfile, type SavedProgress } from './profile';
 
 type TestResult = { label: string; passed: boolean; actual: string; expected: string };
 type RunResult = { results: TestResult[]; passed: boolean; stdout: string; error: string | null };
@@ -48,6 +49,7 @@ type SimulatorRl = {
   loadCustomPolicy: (ref: string) => Promise<void>;
   clearCustomPolicy: () => void;
   customPolicy: null | { ref: string; name: string; kind: 'perpetual' | 'episodic' | 'script'; slot: 'walk' | 'sitstand' | 'trick' | 'script' };
+  scriptRun: null | { t: number };
   toggleScript: () => void;
   inputLocked: boolean;
   respawnActive: boolean;
@@ -66,21 +68,6 @@ type AcademyInputSource = {
   onAction?: (name: string, meta?: unknown) => void;
 };
 type SimulatorWindow = Window & typeof globalThis & { rl?: SimulatorRl; academySource?: AcademyInputSource };
-type SavedProgress = {
-  schemaVersion: 6;
-  locale: Locale;
-  currentId: number;
-  completed: number[];
-  solutions: Record<number, string>;
-  simulatorScript: string;
-  simulatorRuns: number;
-  level1Completed: number[];
-  rewardConfigs: Record<RewardSlot, RewardConfig>;
-  rewardResults: Partial<Record<RewardSlot, RolloutResult>>;
-  level3Completed: number[];
-  updatedAt: string;
-};
-
 const STORAGE_KEY = 'microduck-academy-progress-v1';
 const LEGACY_SIMULATOR_SCRIPT = `# 这些函数调用官方已经训练好的 ONNX skills
 roll()
@@ -95,7 +82,7 @@ turn(0.7, 650)
 
 # 读取实时 observation 后再决定动作
 print(obs[5])
-if obs[5] < -0.85 {
+if obs[5] > -0.85 {
   look(0.35, -0.15, 0.45, 0.0, 800)
   skill("roll")
 }
@@ -111,7 +98,7 @@ turn(0.7, 650)
 
 # Read the live observation before choosing the next action
 print(obs[5])
-if obs[5] < -0.85 {
+if obs[5] > -0.85 {
   look(0.35, -0.15, 0.45, 0.0, 800)
   skill("roll")
 }
@@ -225,25 +212,20 @@ export default function Home() {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
-        const parsed = JSON.parse(saved) as Partial<SavedProgress>;
-        if (parsed.locale === 'zh-CN' || parsed.locale === 'en') setLocale(parsed.locale);
-        setCurrentId(Math.min(lessonsZh.length, Math.max(1, parsed.currentId || 1)));
-        setCompleted(Array.isArray(parsed.completed) ? parsed.completed : []);
+        const parsed = sanitizeLearningProfile(JSON.parse(saved), lessonsZh.length);
+        setLocale(parsed.locale);
+        setCurrentId(parsed.currentId);
+        setCompleted(parsed.completed);
         setSolutions((previous) => ({ ...previous, ...parsed.solutions }));
-        if (typeof parsed.simulatorScript === 'string') {
-          const needsControlExample = (parsed.schemaVersion ?? 0) < 4 && parsed.simulatorScript.trim() === LEGACY_SIMULATOR_SCRIPT.trim();
-          setSimulatorScript(needsControlExample ? DEFAULT_SIMULATOR_SCRIPT : parsed.simulatorScript);
-        }
-        if (typeof parsed.simulatorRuns === 'number') setSimulatorRuns(parsed.simulatorRuns);
-        if (Array.isArray(parsed.level1Completed)) setLevel1Completed(parsed.level1Completed);
-        if (parsed.rewardConfigs) {
-          setRewardConfigs({
-            A: sanitizeRewardConfig(parsed.rewardConfigs.A ?? {}, defaultRewardConfigs.A),
-            B: sanitizeRewardConfig(parsed.rewardConfigs.B ?? {}, defaultRewardConfigs.B),
-          });
-        }
-        if (parsed.rewardResults && typeof parsed.rewardResults === 'object') setRewardResults(parsed.rewardResults);
-        if (Array.isArray(parsed.level3Completed)) setLevel3Completed(parsed.level3Completed);
+        const needsLegacyExample = parsed.schemaVersion < 4 && parsed.simulatorScript.trim() === LEGACY_SIMULATOR_SCRIPT.trim();
+        const previousDefaults = Object.values(DEFAULT_SIMULATOR_SCRIPTS).map((script) => script.replace('> -0.85', '< -0.85').trim());
+        const needsCorrectedExample = parsed.schemaVersion < 7 && previousDefaults.includes(parsed.simulatorScript.trim());
+        setSimulatorScript(needsLegacyExample || needsCorrectedExample ? DEFAULT_SIMULATOR_SCRIPTS[parsed.locale] : parsed.simulatorScript);
+        setSimulatorRuns(parsed.simulatorRuns);
+        setLevel1Completed(parsed.level1Completed);
+        setRewardConfigs(parsed.rewardConfigs);
+        setRewardResults(parsed.rewardResults);
+        setLevel3Completed(parsed.level3Completed);
       }
     } catch {
       // A damaged local save should never prevent the classroom from opening.
@@ -254,7 +236,7 @@ export default function Home() {
   useEffect(() => {
     if (!hydrated) return;
     const saved: SavedProgress = {
-      schemaVersion: 6, locale, currentId, completed, solutions, simulatorScript, simulatorRuns, level1Completed,
+      schemaVersion: 7, locale, currentId, completed, solutions, simulatorScript, simulatorRuns, level1Completed,
       rewardConfigs, rewardResults, level3Completed,
       updatedAt: new Date().toISOString(),
     };
@@ -364,7 +346,7 @@ export default function Home() {
     workerRef.current.postMessage({
       id: ++requestIdRef.current,
       type: 'run',
-      payload: { code, functionName: lesson.functionName, tests: lesson.tests },
+      payload: { code, functionName: lesson.functionName, tests: lesson.tests, missingFunction: text.missingFunction(lesson.functionName) },
     });
     timerRef.current = window.setTimeout(() => {
       workerRef.current?.terminate();
@@ -487,6 +469,28 @@ export default function Home() {
       await new Promise((resolve) => window.setTimeout(resolve, Math.min(50, deadline - Date.now())));
     }
   };
+  const waitForSimulatorReady = async (rl: SimulatorRl, runId: number, line: number) => {
+    const deadline = Date.now() + 3_500;
+    while ((rl.inputLocked || rl.respawnActive) && Date.now() < deadline) await waitForProgram(50, runId);
+    if (rl.inputLocked || rl.respawnActive) {
+      const location = line > 0 ? phrase(`第 ${line} 行：`, `Line ${line}: `) : '';
+      throw new Error(phrase(`${location}模拟器重置超时。`, `${location}the simulator reset timed out.`));
+    }
+  };
+  const switchSimulatorLoco = async (target: 'legs' | 'rollers', runId: number, line: number) => {
+    const rl = getSimulator();
+    if (!rl) throw new Error(phrase('官方模拟器仍在初始化。', 'The official simulator is still initializing.'));
+    const deadline = Date.now() + 5_000;
+    while (rl.loco !== target && Date.now() < deadline) {
+      if (scriptRunIdRef.current !== runId) throw new Error('__PROGRAM_STOPPED__');
+      if (!rl.locoSwitching) await rl.setLoco(target);
+      await waitForProgram(100, runId);
+    }
+    if (rl.loco !== target) {
+      throw new Error(phrase(`第 ${line} 行：底盘未能切换到 ${target}；请先等待当前动作结束。`, `Line ${line}: the base did not switch to ${target}; wait for the current motion to finish.`));
+    }
+    await waitForSimulatorReady(rl, runId, line);
+  };
   const executeControlCommand = async (node: Extract<ControlProgramNode, { type: 'command' }>, rl: SimulatorRl, source: AcademyInputSource, runId: number) => {
     const command = node.source;
     setSimulatorStatus(phrase(`第 ${node.line} 行 · ${command}`, `Line ${node.line} · ${command}`));
@@ -519,6 +523,7 @@ export default function Home() {
     if (lookMatch) {
       const [neck, pitch, yaw, roll, milliseconds] = parseNumberArguments(lookMatch[1], node.line, 5, locale);
       if (!rl.headMode) rl.toggleHeadMode();
+      if (!rl.headMode) throw new Error(phrase(`第 ${node.line} 行：look 未启动；请先等待当前动作结束。`, `Line ${node.line}: look did not start; wait for the current motion to finish.`));
       [neck, pitch, yaw, roll].forEach((value, index) => { rl.headTarget[index] = Math.min(2.5, Math.max(-2.5, value)); });
       addSimulatorTrace(`L${node.line} head target = [${[neck, pitch, yaw, roll].map((value) => value.toFixed(2)).join(', ')}]`);
       await waitForProgram(milliseconds, runId);
@@ -565,8 +570,8 @@ export default function Home() {
 
     if (moveMatch) {
       const ref = moveMatch[1].trim();
-      if (!/^(?:[\w.-]+\/[\w.-]+|session:[\w.-]+(?::[\w.-]+)?|https?:\/\/\S+\.onnx(?:\?\S*)?)$/i.test(ref)) {
-        throw new Error(phrase(`第 ${node.line} 行：move 需要 org/repo、session:id 或 .onnx URL。`, `Line ${node.line}: move expects org/repo, session:id, or an .onnx URL.`));
+      if (!/^(?:[\w.-]+\/[\w.-]+|https:\/\/\S+\.onnx(?:\?\S*)?)$/i.test(ref)) {
+        throw new Error(phrase(`第 ${node.line} 行：move 需要 org/repo 或 HTTPS .onnx URL。`, `Line ${node.line}: move expects org/repo or an HTTPS .onnx URL.`));
       }
       addSimulatorTrace(phrase(`L${node.line} 正在校验并加载 ${ref}`, `L${node.line} validating and loading ${ref}`));
       await rl.loadCustomPolicy(ref);
@@ -576,31 +581,59 @@ export default function Home() {
     }
 
     const skill = skillMatch?.[1];
-    if (skill === 'roll' || command === 'roll()') rl.triggerRoll('academy-program');
-    else if (skill === 'kick_left' || legacyKickMatch?.[1] === 'left') rl.triggerKick('left', 'academy-program');
-    else if (skill === 'kick_right' || legacyKickMatch?.[1] === 'right') rl.triggerKick('right', 'academy-program');
-    else if (skill === 'ground_pick' || command === 'ground_pick()') rl.triggerGroundPick('academy-program');
+    if (skill === 'roll' || command === 'roll()') {
+      rl.triggerRoll('academy-program');
+      if (rl.mode !== 'roll') throw new Error(phrase(`第 ${node.line} 行：roll 未启动；请先等待当前动作结束。`, `Line ${node.line}: roll did not start; wait for the current motion to finish.`));
+    }
+    else if (skill === 'kick_left' || legacyKickMatch?.[1] === 'left') {
+      if (!rl.triggerKick('left', 'academy-program')) throw new Error(phrase(`第 ${node.line} 行：kick_left 未启动；请先等待当前动作结束。`, `Line ${node.line}: kick_left did not start; wait for the current motion to finish.`));
+    }
+    else if (skill === 'kick_right' || legacyKickMatch?.[1] === 'right') {
+      if (!rl.triggerKick('right', 'academy-program')) throw new Error(phrase(`第 ${node.line} 行：kick_right 未启动；请先等待当前动作结束。`, `Line ${node.line}: kick_right did not start; wait for the current motion to finish.`));
+    }
+    else if (skill === 'ground_pick' || command === 'ground_pick()') {
+      rl.triggerGroundPick('academy-program');
+      if (rl.mode !== 'groundpick') throw new Error(phrase(`第 ${node.line} 行：ground_pick 未启动；请先等待当前动作结束。`, `Line ${node.line}: ground_pick did not start; wait for the current motion to finish.`));
+    }
     else if (skill === 'crouch') {
       if (rl.loco !== 'rollers') throw new Error(phrase(`第 ${node.line} 行：crouch 需要先调用 rollers()。`, `Line ${node.line}: call rollers() before crouch.`));
       rl.triggerCrouch('academy-program');
+      if (rl.mode !== 'crouch') throw new Error(phrase(`第 ${node.line} 行：crouch 未启动；请先等待当前动作结束。`, `Line ${node.line}: crouch did not start; wait for the current motion to finish.`));
     }
     else if (command === 'ball()' || command === 'spawn_ball()') rl.spawnBall();
-    else if (command === 'rollers()') await rl.setLoco('rollers');
-    else if (command === 'legs()') await rl.setLoco('legs');
+    else if (command === 'rollers()') await switchSimulatorLoco('rollers', runId, node.line);
+    else if (command === 'legs()') await switchSimulatorLoco('legs', runId, node.line);
     else if (command === 'sit()') {
       if (rl.loco !== 'legs') throw new Error(phrase(`第 ${node.line} 行：sit 只支持双腿底盘。`, `Line ${node.line}: sit is available only with the leg base.`));
       if (!(rl.mode === 'sitstand' && rl.sitFlag === 1)) source.onAction?.('sitToggle');
+      if (rl.mode !== 'sitstand') throw new Error(phrase(`第 ${node.line} 行：sit 未启动；请先等待当前动作结束。`, `Line ${node.line}: sit did not start; wait for the current motion to finish.`));
     }
-    else if (command === 'stand()' || command === 'walk()') source.onAction?.('walk');
+    else if (command === 'stand()' || command === 'walk()') {
+      source.onAction?.('walk');
+      const accepted = rl.mode === 'walk' || (rl.mode === 'sitstand' && rl.sitFlag === 0);
+      if (!accepted) throw new Error(phrase(`第 ${node.line} 行：${command.slice(0, -2)} 未启动；请先等待当前动作结束。`, `Line ${node.line}: ${command.slice(0, -2)} did not start; wait for the current motion to finish.`));
+    }
     else if (command === 'quack()') source.onAction?.('quack');
     else if (command === 'play_move()') {
       if (!rl.customPolicy) throw new Error(phrase(`第 ${node.line} 行：请先用 move(ref) 加载社区动作。`, `Line ${node.line}: load a community motion with move(ref) first.`));
-      if (rl.customPolicy.slot === 'trick') rl.triggerRoll('academy-program');
-      else if (rl.customPolicy.slot === 'script') rl.toggleScript();
-      else if (rl.customPolicy.slot === 'sitstand') source.onAction?.('sitToggle');
+      if (rl.customPolicy.slot === 'trick') {
+        rl.triggerRoll('academy-program');
+        if (rl.mode !== 'roll') throw new Error(phrase(`第 ${node.line} 行：社区动作未启动；请先等待当前动作结束。`, `Line ${node.line}: the community motion did not start; wait for the current motion to finish.`));
+      }
+      else if (rl.customPolicy.slot === 'script') {
+        rl.toggleScript();
+        if (!rl.scriptRun) throw new Error(phrase(`第 ${node.line} 行：社区脚本未启动；请先等待当前动作结束。`, `Line ${node.line}: the community script did not start; wait for the current motion to finish.`));
+      }
+      else if (rl.customPolicy.slot === 'sitstand') {
+        source.onAction?.('sitToggle');
+        if (rl.mode !== 'sitstand') throw new Error(phrase(`第 ${node.line} 行：社区坐站策略未启动；请先等待当前动作结束。`, `Line ${node.line}: the community sit-stand policy did not start; wait for the current motion to finish.`));
+      }
     }
     else if (command === 'official()') rl.clearCustomPolicy();
-    else if (command === 'reset()') rl.resetSim();
+    else if (command === 'reset()') {
+      rl.resetSim();
+      await waitForSimulatorReady(rl, runId, node.line);
+    }
     else throw new Error(phrase(`第 ${node.line} 行无法识别：${command}`, `Line ${node.line}: unknown command: ${command}`));
     addSimulatorTrace(`L${node.line} ${command} → mode=${rl.mode}, loco=${rl.loco}`);
     await waitForProgram(80, runId);
@@ -638,6 +671,7 @@ export default function Home() {
     setSimulatorTrace([]);
     try {
       const program = parseControlProgram(simulatorScript, locale);
+      await waitForSimulatorReady(rl, runId, 0);
       await executeControlNodes(program, rl, source, runId);
       setSimulatorRuns((value) => value + 1);
       addSimulatorTrace(phrase(`完成 · mode=${rl.mode}, loco=${rl.loco}`, `Complete · mode=${rl.mode}, loco=${rl.loco}`));
@@ -688,17 +722,25 @@ export default function Home() {
     let smoothnessSum = 0;
     let previousAction: number[] | null = null;
     let ended: RolloutResult['terminatedBy'] = 'timeout';
+    let failureMessage = '';
     let startedAt = performance.now();
     let previousAt = startedAt;
 
     try {
       rl.clearCustomPolicy();
-      if (rl.loco !== 'legs') await rl.setLoco('legs');
+      const switchDeadline = performance.now() + 5_000;
+      while (rl.loco !== 'legs' && performance.now() < switchDeadline) {
+        if (rewardRunIdRef.current !== runId) { ended = 'stopped'; break; }
+        if (!rl.locoSwitching) await rl.setLoco('legs');
+        await new Promise((resolve) => window.setTimeout(resolve, 100));
+      }
+      if (ended !== 'stopped' && rl.loco !== 'legs') throw new Error(phrase('双腿底盘未能就绪。', 'The leg base did not become ready.'));
       rl.resetSim();
-      const settleDeadline = performance.now() + 2500;
+      const settleDeadline = performance.now() + 3500;
       while ((rl.inputLocked || rl.respawnActive) && performance.now() < settleDeadline) {
         await new Promise((resolve) => window.setTimeout(resolve, 50));
       }
+      if (rl.inputLocked || rl.respawnActive) throw new Error(phrase('模拟器重置超时。', 'The simulator reset timed out.'));
       await new Promise((resolve) => window.setTimeout(resolve, 250));
       if (rewardRunIdRef.current !== runId) ended = 'stopped';
       else {
@@ -718,7 +760,7 @@ export default function Home() {
         const action = Array.from(rl.lastAction);
         const observation = Array.from(rl.buildObs());
         const sample = {
-          velocityX: planarSpeedFromState(rl.data.qvel),
+          planarSpeed: planarSpeedFromState(rl.data.qvel),
           gravityZ: observation[5],
           height: Number(rl.data.qpos[2]),
           action,
@@ -726,8 +768,8 @@ export default function Home() {
         const breakdown = scoreRewardSample(config, sample, previousAction);
         const dt = Math.min(0.1, Math.max(0, (now - previousAt) / 1000));
         weightedReturn += breakdown.reward * dt;
-        speedSum += sample.velocityX;
-        trackingErrorSum += Math.abs(sample.velocityX - config.targetSpeed);
+        speedSum += sample.planarSpeed;
+        trackingErrorSum += Math.abs(sample.planarSpeed - config.targetSpeed);
         effortSum += breakdown.effort;
         smoothnessSum += breakdown.smoothness;
         sampleCount += 1;
@@ -736,8 +778,9 @@ export default function Home() {
         const reason = terminationReason(config, sample);
         if (reason) { ended = reason; break; }
       }
-    } catch {
+    } catch (error) {
       ended = 'stopped';
+      failureMessage = error instanceof Error ? error.message : phrase('Reward rollout 运行失败。', 'Reward rollout failed.');
     } finally {
       source.active = false;
       source.command.fill(0);
@@ -762,7 +805,7 @@ export default function Home() {
         ? [1, 2, 3, 4]
         : Array.from(new Set([...missions, 1, slot === 'A' ? 2 : 3])).sort((a, b) => a - b));
       setSimulatorStatus(phrase(`实验 ${slot} 完成 · return=${weightedReturn.toFixed(3)} · ${sampleCount} samples · ${ended}`, `Experiment ${slot} complete · return=${weightedReturn.toFixed(3)} · ${sampleCount} samples · ${ended}`));
-    } else setSimulatorStatus(phrase(`实验 ${slot} 未采集到有效数据，请重新运行`, `Experiment ${slot} collected no valid samples; run it again`));
+    } else setSimulatorStatus(failureMessage || phrase(`实验 ${slot} 未采集到有效数据，请重新运行`, `Experiment ${slot} collected no valid samples; run it again`));
     if (rewardRunIdRef.current === runId) setRewardRunning(null);
   };
   const stopRewardRollout = () => {
@@ -782,7 +825,7 @@ export default function Home() {
   };
   const exportProfile = () => {
     const profile: SavedProgress = {
-      schemaVersion: 6, locale, currentId, completed, solutions, simulatorScript, simulatorRuns, level1Completed,
+      schemaVersion: 7, locale, currentId, completed, solutions, simulatorScript, simulatorRuns, level1Completed,
       rewardConfigs, rewardResults, level3Completed,
       updatedAt: new Date().toISOString(),
     };
@@ -796,20 +839,17 @@ export default function Home() {
   const importProfile = async (file: File | undefined) => {
     if (!file) return;
     try {
-      const profile = JSON.parse(await file.text()) as Partial<SavedProgress>;
-      if (profile.locale === 'zh-CN' || profile.locale === 'en') setLocale(profile.locale);
-      setCurrentId(Math.min(lessons.length, Math.max(1, profile.currentId || 1)));
-      setCompleted(Array.isArray(profile.completed) ? profile.completed.filter((id) => Number.isInteger(id) && id >= 1 && id <= lessons.length) : []);
+      const profile = sanitizeLearningProfile(JSON.parse(await file.text()), lessons.length);
+      setLocale(profile.locale);
+      setCurrentId(profile.currentId);
+      setCompleted(profile.completed);
       setSolutions((previous) => ({ ...previous, ...profile.solutions }));
-      if (typeof profile.simulatorScript === 'string') setSimulatorScript(profile.simulatorScript);
-      if (typeof profile.simulatorRuns === 'number') setSimulatorRuns(profile.simulatorRuns);
-      if (Array.isArray(profile.level1Completed)) setLevel1Completed(profile.level1Completed.filter((id) => Number.isInteger(id) && id >= 1 && id <= 6));
-      if (profile.rewardConfigs) setRewardConfigs({
-        A: sanitizeRewardConfig(profile.rewardConfigs.A ?? {}, defaultRewardConfigs.A),
-        B: sanitizeRewardConfig(profile.rewardConfigs.B ?? {}, defaultRewardConfigs.B),
-      });
-      if (profile.rewardResults && typeof profile.rewardResults === 'object') setRewardResults(profile.rewardResults);
-      if (Array.isArray(profile.level3Completed)) setLevel3Completed(profile.level3Completed.filter((id) => Number.isInteger(id) && id >= 1 && id <= 4));
+      setSimulatorScript(profile.simulatorScript);
+      setSimulatorRuns(profile.simulatorRuns);
+      setLevel1Completed(profile.level1Completed);
+      setRewardConfigs(profile.rewardConfigs);
+      setRewardResults(profile.rewardResults);
+      setLevel3Completed(profile.level3Completed);
     } catch {
       window.alert(text.invalidProfile);
     }
@@ -915,7 +955,7 @@ export default function Home() {
                 onRun={(slot) => void runRewardRollout(slot)} onStop={stopRewardRollout} onReset={resetRewardLab} locale={locale}
               />}
             </aside>
-            <div className="simulator-frame-wrap"><iframe ref={simulatorFrameRef} src="/microduck-simulator/?boot=1" title={text.simulatorFrameTitle} allow="autoplay; fullscreen" /></div>
+            <div className="simulator-frame-wrap"><iframe ref={simulatorFrameRef} src="/microduck-simulator/?boot=1&academy=1" title={text.simulatorFrameTitle} allow="autoplay; fullscreen" /></div>
           </div>
           <p className="truth-note"><strong>{text.levelBoundary}</strong>{text.levelBoundaryNote}</p>
         </section>

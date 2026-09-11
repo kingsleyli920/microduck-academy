@@ -4,6 +4,32 @@
 
 No unreleased changes.
 
+## 0.2.1-preview — 2026-09-11
+
+- Corrected the Level 2 projected-gravity branch and tightened the Level 0 explanations of goal control, discounted return, PPO clipping, reward exploits, and hardware-specific safety limits.
+- Removed the unsupported standalone `session:id` motion reference and documented the two verified `move(ref)` inputs: Hub repositories and HTTPS ONNX URLs.
+- Disabled upstream multiplayer signaling and pose broadcast in Academy embedded mode while preserving explicit community-policy downloads.
+- Localized Python missing-function errors and validated imported learning profiles before restoring them.
+- Hardened local service discovery, shutdown origin checks, port-conflict handling, and the macOS launcher.
+- Made `reset()` and base switching wait for the simulator’s real ready state, and report rejected policy triggers instead of silently continuing.
+- Added a local-build compatibility patch for the pinned simulator's rollers-to-legs address handoff; generated upstream files remain untracked.
+- Added an explicit mobile viewport and repaired narrow-screen navigation and lesson-card wrapping.
+- Removed unused hosting scaffolding and expanded release tests.
+- Marked the application package as private to prevent accidental npm publication; GitHub source remains Apache-2.0.
+
+### 简体中文
+
+- 修正 Level 2 投影重力分支，并收紧 Level 0 对目标控制、折扣回报、PPO 裁剪、reward exploit 和硬件安全边界的表述。
+- 删除独立版本实际不可用的 `session:id`，只保留经过支持边界核对的 Hub 仓库和 HTTPS ONNX 两类 `move(ref)` 输入。
+- Academy 嵌入模式关闭上游多人 signaling 与姿态广播，同时保留学习者主动触发的社区策略下载。
+- Python 缺失函数错误跟随界面语言，并在恢复导入档案前校验数据。
+- 加固本地服务识别、关闭接口的来源检查、端口冲突处理和 macOS 启动器。
+- 让 `reset()` 与底盘切换等待模拟器真实就绪，并在策略触发被安全门拒绝时明确报错。
+- 为固定模拟器版本的滚轮至双腿地址交接增加本地构建兼容补丁；生成的上游文件仍不进入 Git。
+- 增加明确的移动端 viewport，并修复窄屏导航与课程卡片换行。
+- 删除未使用的托管脚手架并扩充发布检查。
+- 将应用包标记为 private，避免误发布到 npm；GitHub 源码仍采用 Apache-2.0。
+
 ## 0.2.0-preview — 2026-09-11
 
 ### English

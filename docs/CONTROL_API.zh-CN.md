@@ -17,11 +17,11 @@ turn(0.55, 600)
 
 # 读取当前 observation
 print(obs[5])
-if obs[5] < -0.85 {
+if obs[5] > -0.85 {
   skill("roll")
 }
 
-wait(2500)
+wait(3200)
 reset()
 ```
 
@@ -38,7 +38,7 @@ reset()
 Microduck 有三层不同的可执行能力：
 
 1. 本文列出的 `control.duck` 是课堂公开 API，全部命令都可以在左侧编辑器运行。
-2. `move(ref)` 加载的社区动作来自 Hub、Academy session 或 ONNX URL，数量会不断变化，没有静态的“全部技能名单”。
+2. `move(ref)` 加载的社区动作来自 Hub 仓库或 HTTPS ONNX URL，数量会不断变化，没有静态的“全部技能名单”。
 3. 官方模拟器还暴露 `model`、`data`、`step()`、`render()`、自动恢复状态等调试对象。它们会随实现变化，不属于面向学习者的稳定编程接口。
 
 ## 控制命令
@@ -100,7 +100,7 @@ repeat(2) {
 执行到该行时采样 observation；条件成立才执行代码块。支持 `<`、`<=`、`>`、`>=`，可以嵌套。
 
 ```text
-if obs[5] < -0.85 {
+if obs[5] > -0.85 {
   skill("roll")
 }
 ```
@@ -136,7 +136,7 @@ wait(1800)
 sit()
 wait(1200)
 stand()
-wait(1200)
+wait(2200)
 drive(0.16, 0.0, 900)
 ```
 
@@ -156,7 +156,7 @@ drive(0.16, 0.0, 900)
 
 ### `reset()` · 仅模拟器
 
-调用官方 `resetSim()`，恢复鸭子和场景初始状态。
+调用官方 `resetSim()`，恢复鸭子和场景初始状态，并等待重置动画释放输入锁后再执行下一条命令。
 
 ### `camera("follow" | "free")` · 仅模拟器
 
@@ -164,15 +164,14 @@ drive(0.16, 0.0, 900)
 
 ## 社区和自定义动作
 
-最新版官方模拟器支持三类 manifest：持续 gait / sitstand policy、一次性 episodic trick，以及驱动 13D command 的 script。
+固定版本的官方模拟器加载器支持三类 manifest：持续 gait / sitstand policy、一次性 episodic trick，以及驱动 13D command 的 script。
 
 ### `move(ref)` · 需对应策略
 
 加载并挂载一个动作。`ref` 支持：
 
 - Hugging Face Hub 仓库：`"org/repo"`
-- Academy 私有训练：`"session:id"` 或 `"session:id:round"`
-- 可访问的直接链接：以 `.onnx` 结尾的 HTTPS URL
+- 可访问的直接链接：以 `.onnx` 结尾的 HTTPS URL；同目录没有 `manifest.json` 时按 perpetual walk policy 挂载
 
 官方加载器会先检查 manifest、`[1,61] → [1,14]` 形状、有限输出以及非恒定输出，校验失败时保留原策略。
 
@@ -269,5 +268,5 @@ Academy 把自己的 command source 注册到官方控制器。官方控制器�
 - `observation 下标必须在 0–60`：超出了 policy 的 61D 输入。
 - `repeat 次数必须在 1–20`：课堂限制循环上限，避免浏览器被意外长程序占用。
 - `crouch 需要先调用 rollers()`：当前 crouch policy 只属于滚轮底盘。
-- `move 需要 org/repo…`：动作引用格式不属于官方加载器支持的三种格式。
+- `move 需要 org/repo…`：动作引用格式不是 `org/repo`，也不是 HTTPS `.onnx` URL。
 - `动作未能加载`：仓库不存在、跨域受限、manifest 不兼容或 ONNX smoke test 未通过；原策略会继续工作。
