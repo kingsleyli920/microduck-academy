@@ -1,0 +1,30 @@
+name: Lesson or API idea
+description: Propose a learning mission, experiment, or control API improvement
+title: "[Idea] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: learner_goal
+    attributes:
+      label: What should the learner understand or build?
+    validations:
+      required: true
+  - type: textarea
+    id: runnable_evidence
+    attributes:
+      label: What runnable evidence would prove the lesson works?
+      description: Describe inputs, expected behavior, and simulator or hardware limits.
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Area
+      options:
+        - Level 0 — reinforcement learning concepts
+        - Level 1 — policy observation
+        - Level 2 — control programming
+        - Level 3–5 — training and evaluation
+        - Level 6 — hardware deployment
+    validations:
+      required: true

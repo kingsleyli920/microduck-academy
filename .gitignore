@@ -1,0 +1,53 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/.vinext/
+/out/
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# local environment
+.env*
+
+# deployment and generated files
+.vercel
+next-env.d.ts
+/dist/
+/.wrangler/
+/outputs/
+/work/
+
+# generated browser runtimes (installed by `npm run setup:runtime`)
+/public/pyodide/
+/public/bundle/
+/public/policies/
+/public/robot/
+/public/assets/
+/public/simulator/
+/public/microduck-simulator/
+/public/runtime-versions.json
+/vendor/
+
+# local launcher state
+/.academy.log
+*.tsbuildinfo
