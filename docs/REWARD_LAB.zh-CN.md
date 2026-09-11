@@ -1,5 +1,7 @@
 # Level 3：Task & Reward Lab
 
+[English](REWARD_LAB.md) · 简体中文
+
 Level 3 用官方 Microduck 3D 模拟器里的真实 MuJoCo 状态，帮助学习者把“想让鸭子完成什么”翻译成 command、reward、termination 和评估指标。它使用当前官方 `walk` ONNX policy 采集轨迹，然后按配置计算分数。
 
 ## 一次实验发生了什么
@@ -46,7 +48,7 @@ reward = tracking_weight × tracking
 
 当前 `tracking` 只看平面速率，不区分前进、后退或侧滑。这是故意保留的第一个 reward hacking 观察点：若鸭子以错误方向达到目标速率，分数仍可能很好。后续训练任务应改用机身朝向速度，并加入横向速度惩罚。
 
-## 与真正训练的边界
+## 与策略训练的边界
 
 Level 3 是 policy evaluation 和 reward prototyping。改变这里的权重会重新给轨迹打分，但不会反向传播，也不会修改 ONNX 神经网络。Level 4 才会把同类 reward 放入 MJLab 环境，运行大量并行 rollout 和 PPO 更新，产出新的 checkpoint；Level 5 再把 checkpoint 导出为浏览器和真机可加载的 ONNX policy。
 

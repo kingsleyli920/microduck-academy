@@ -1,5 +1,7 @@
 # Security
 
+[简体中文](SECURITY.zh-CN.md) · English
+
 Please report a vulnerability through GitHub's private vulnerability reporting for this repository instead of opening a public issue. Include the affected version, reproduction steps, and expected impact.
 
 ## Supported versions

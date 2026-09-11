@@ -6,6 +6,7 @@ Microduck Academy is a public preview. The repository is suitable for learning, 
 
 | Capability | Status |
 | --- | --- |
+| Chinese and English classroom | Available; UI, lessons, labs, API Reference, and core repository docs |
 | Level 0 browser-local Python curriculum | Available, 9 lessons |
 | Level 1 real policy observation | Available, 6 experiments |
 | Level 2 `control.duck` programming | Available, 25 API entries |
@@ -22,7 +23,9 @@ Microduck Academy is a public preview. The repository is suitable for learning, 
 - Official simulator commit `023172c8a7d629b5258d90364c13bafe013abbfa`
 - Pyodide 0.29.3
 
-The CI validates source hygiene, Markdown links, tests, lint, TypeScript, and the production build. Simulator interaction is additionally checked in a real local browser because generated upstream assets are intentionally absent from GitHub Actions.
+The selected language is stored with the browser-local learning profile. Switching languages preserves learner-edited code and experiment records.
+
+The CI validates source hygiene, bilingual structure, Markdown links, tests, lint, TypeScript, and the production build. Simulator interaction is additionally checked in a real local browser because generated upstream assets are intentionally absent from GitHub Actions.
 
 ## Distribution boundary
 

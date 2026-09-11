@@ -1,30 +1,30 @@
-name: Lesson or API idea
-description: Propose a learning mission, experiment, or control API improvement
+name: Lesson or API idea / 课程与 API 建议
+description: Propose a lesson, experiment, or control API improvement / 建议课程、实验或控制 API 改进
 title: "[Idea] "
 labels: [enhancement]
 body:
   - type: textarea
     id: learner_goal
     attributes:
-      label: What should the learner understand or build?
+      label: What should the learner understand or build? / 学习者应理解或完成什么？
     validations:
       required: true
   - type: textarea
     id: runnable_evidence
     attributes:
-      label: What runnable evidence would prove the lesson works?
-      description: Describe inputs, expected behavior, and simulator or hardware limits.
+      label: What runnable evidence would prove it works? / 如何通过运行结果验证？
+      description: Describe inputs, expected behavior, and simulator or hardware limits. / 说明输入、预期行为以及模拟器或硬件限制。
     validations:
       required: true
   - type: dropdown
     id: scope
     attributes:
-      label: Area
+      label: Area / 范围
       options:
-        - Level 0 — reinforcement learning concepts
-        - Level 1 — policy observation
-        - Level 2 — control programming
-        - Level 3–5 — training and evaluation
-        - Level 6 — hardware deployment
+        - Level 0 — reinforcement learning concepts / 强化学习概念
+        - Level 1 — policy observation / 策略观测
+        - Level 2 — control programming / 控制编程
+        - Level 3–5 — training and evaluation / 训练与评估
+        - Level 6 — hardware deployment / 真机部署
     validations:
       required: true

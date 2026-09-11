@@ -1,5 +1,7 @@
 # Contributing to Microduck Academy
 
+[简体中文](CONTRIBUTING.zh-CN.md) · English
+
 Thanks for helping make reinforcement learning easier to learn with Microduck.
 
 ## Local setup
@@ -7,7 +9,7 @@ Thanks for helping make reinforcement learning easier to learn with Microduck.
 Use Node.js 22+, Git, and Git LFS.
 
 ```bash
-npm install
+npm ci
 npm run setup:runtime
 npm run verify
 npm run academy
@@ -19,13 +21,15 @@ The runtime setup downloads a pinned copy of the official Microduck simulator. G
 
 - Keep lesson claims tied to code that learners can run.
 - Add or update a test when changing `control.duck` parsing or published API examples.
-- Run `npm run verify` before opening a pull request. It checks release hygiene, tests, lint, TypeScript, and the production build.
+- Run `npm run verify` before opening a pull request. It checks release hygiene, documentation links, bilingual structure, tests, lint, TypeScript, and the production build.
 - Do not commit official simulator builds, ONNX policies, robot assets, secrets, training outputs, or user learning profiles.
 - Mark simulator-only and hardware-unverified behavior clearly.
+- Update both Chinese and English copy when changing learner-facing text.
 
 ## Project structure
 
 - `app/lessons.ts` contains the introductory Python curriculum.
+- `app/i18n.ts` contains shared interface copy and learning-path text.
 - `app/control-program.ts` implements the bounded `control.duck` language.
 - `app/reward-lab.ts` contains Level 3 reward and termination calculations.
 - `scripts/setup-runtime.mjs` builds the ignored, pinned upstream simulator runtime.

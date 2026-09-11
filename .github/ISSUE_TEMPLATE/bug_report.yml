@@ -1,34 +1,34 @@
-name: Bug report
-description: Report a reproducible classroom or simulator problem
+name: Bug report / 问题报告
+description: Report a reproducible classroom or simulator problem / 报告可复现的课堂或模拟器问题
 title: "[Bug] "
 labels: [bug]
 body:
   - type: markdown
     attributes:
-      value: Thanks for helping improve Microduck Academy. Do not include secrets or private learning profiles.
+      value: Thanks for helping improve Microduck Academy. Do not include secrets or private learning profiles. / 感谢参与改进。请勿提交密钥或私人学习档案。
   - type: textarea
     id: problem
     attributes:
-      label: What happened?
-      description: Include the lesson or lab level and the behavior you saw.
+      label: What happened? / 发生了什么？
+      description: Include the lesson or lab level and the behavior you saw. / 请写明课程或实验 Level 及实际行为。
     validations:
       required: true
   - type: textarea
     id: reproduce
     attributes:
-      label: Reproduction steps
+      label: Reproduction steps / 复现步骤
       placeholder: "1. Open…\n2. Run…\n3. Observe…"
     validations:
       required: true
   - type: input
     id: environment
     attributes:
-      label: Environment
+      label: Environment / 运行环境
       placeholder: macOS 15, Node.js 22, Chrome 140
     validations:
       required: true
   - type: textarea
     id: logs
     attributes:
-      label: Relevant output
+      label: Relevant output / 相关输出
       render: shell

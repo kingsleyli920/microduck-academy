@@ -6,13 +6,13 @@
 
 [English](README.en.md) · 中文
 
-一个面向有软件工程基础、初学强化学习的开发者的 Microduck 强化学习闯关课堂。学习者在同一个页面阅读任务、写 Python、运行真实测试、观察即时可视化，并进入官方 Microduck 3D 模拟器。
+一个面向有软件工程基础、初学强化学习的开发者的 Microduck 强化学习课堂。学习者在同一个页面阅读任务、写 Python、运行测试、观察即时结果，并进入官方 Microduck 3D 模拟器。
 
 这是独立的社区课堂项目，与 Pollen Robotics 或 Hugging Face 没有隶属、合作或背书关系。
 
 **项目状态：公开 Preview。** Level 0–3 已能在本地课堂中运行；PPO 训练、ONNX 导出和真机安装仍在路线图中。能力声明以[发布状态](docs/RELEASE_STATUS.zh-CN.md)为准，运行和数据边界见[架构文档](docs/ARCHITECTURE.md)。
 
-![Microduck Academy 闯关课堂](docs/assets/course.png)
+![Microduck Academy 中文课程界面](docs/assets/course.zh-CN.jpg)
 
 ## 快速开始
 
@@ -29,26 +29,27 @@ npm run academy
 
 打开 `http://localhost:3210`，进入“3D 实验场”后即可边写 `control.duck`、边观察官方 ONNX 策略。
 
-![Microduck Academy 3D 控制编程](docs/assets/lab.png)
+![Microduck Academy 中文 3D 控制编程](docs/assets/lab.zh-CN.jpg)
 
 ## 当前能力
 
-- 9 个逐步解锁的中文实验：reward、observation/action、command-conditioned policy、rollout、连续动作探索、discounted return、PPO clip、reward hacking、部署安全层
+- 9 节逐步解锁的中英文练习：reward、observation/action、command-conditioned policy、rollout、连续动作探索、discounted return、PPO clip、reward hacking、部署安全层
 - Level 1 的 6 个真实策略实验：61D observation、14D action、command、policy mode、控制响应与安全重置
 - Pyodide Web Worker 在浏览器本地执行 Python，不把学习者代码上传到服务器
 - 每关 3 组真实函数测试，显示实际值和期望值
 - 自动保存当前关卡、已完成关卡和代码
-- 同屏小实验与官方 MuJoCo + ONNX 3D 模拟器
+- 同屏测试结果与官方 MuJoCo + ONNX 3D 模拟器
 - Level 2 控制程序可用 `drive`、`turn`、`look` 连续发送 command，用 `if obs[i]` 和 `repeat` 编写反馈逻辑，也能调用官方 skills、坐站控制和社区策略
 - Level 2 内置可搜索的 25 项完整 `control.duck` Reference；文档以编辑器右侧抽屉打开，示例插入后保持可查。完整中文版见 [`docs/CONTROL_API.zh-CN.md`](docs/CONTROL_API.zh-CN.md)
 - Level 3 Task & Reward Lab 可设置目标速度、四项 reward 权重与两个 termination 条件，用官方 MuJoCo 状态采集 A/B rollout，并比较 return、跟踪误差和 action energy
+- 中英文课堂界面、课程内容、API Reference 和仓库文档
 - Level 0–6 学习路线、同类开源项目调研与产品架构
 - 版本化 local-first 学习档案，可导出/导入 JSON
 - macOS 一键启动，网页内“停止课堂”可关闭本地服务
 
 ## 学习者怎么用
 
-完成首次源码安装后，macOS 用户也可以直接双击仓库根目录的 `launch-microduck-academy.command`。页面打开后只看“老师现在只让你做一件事”，写完点“运行代码”；通过后点“进入下一关”。
+完成首次源码安装后，macOS 用户也可以直接双击仓库根目录的 `launch-microduck-academy.command`。页面打开后，按“本节目标”修改代码并点击“运行代码”；测试通过后继续下一节。
 
 页面右上角的“停止课堂”会关闭本地 Node.js 服务。学习进度保存在浏览器的 `localStorage` 中；“学习路线”页可以导出或导入完整学习档案。
 
@@ -85,11 +86,11 @@ npm run verify
 
 关卡全部定义在 `app/lessons.ts`。每关提供题目、初始代码、提示、函数名和测试数据。`public/python-worker.js` 会在独立 Web Worker 中加载 Pyodide，执行函数并比较结果。
 
-贡献流程见 [`CONTRIBUTING.md`](CONTRIBUTING.md)，使用问题见 [`SUPPORT.md`](SUPPORT.md)，维护和发版步骤见 [`docs/MAINTAINER_GUIDE.md`](docs/MAINTAINER_GUIDE.md)。
+贡献流程见 [`CONTRIBUTING.zh-CN.md`](CONTRIBUTING.zh-CN.md)，使用问题见 [`SUPPORT.zh-CN.md`](SUPPORT.zh-CN.md)，维护和发版步骤见 [`docs/MAINTAINER_GUIDE.zh-CN.md`](docs/MAINTAINER_GUIDE.zh-CN.md)。每份文档顶部都可以切换英文版本。
 
 ## 与真实强化学习训练的关系
 
-前九关的小实验会立即显示函数输出，但修改奖励函数不会直接改变 3D 鸭子的动作。动作策略需要在支持 NVIDIA CUDA 的机器上重新训练，再导出为 ONNX。Apple Silicon Mac 适合运行课堂、浏览器模拟器和已训练策略；正式训练建议使用云端 GPU。
+Level 0 的九节练习会立即显示函数输出，但修改奖励函数不会直接改变 3D 鸭子的动作。动作策略需要在支持 NVIDIA CUDA 的机器上重新训练，再导出为 ONNX。Apple Silicon Mac 适合运行课堂、浏览器模拟器和已训练策略；正式训练建议使用云端 GPU。
 
 ## 官方模拟器资源
 
