@@ -102,4 +102,4 @@ npm run check:runtime
 - Pollen Robotics 官方 Microduck 浏览器模拟器
 - Shadcn UI 与 Tailwind CSS
 
-Academy 自有源码使用 Apache-2.0。当前没有发布到公网，也没有创建远程 Git 仓库。
+Academy 自有源码使用 Apache-2.0。公开源码与 Preview Release 位于 [`kingsleyli920/microduck-academy`](https://github.com/kingsleyli920/microduck-academy)。

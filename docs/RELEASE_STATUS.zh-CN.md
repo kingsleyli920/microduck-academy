@@ -1,5 +1,9 @@
 # Microduck Academy 发布状态
 
+公开仓库：<https://github.com/kingsleyli920/microduck-academy>
+
+当前版本：`v0.1.0-preview`
+
 ## v0.1 的准确定位
 
 当前版本是一个 local-first 的开源预览：完成强化学习入门、真实策略观察和浏览器动作编排。它不是完整训练平台，也尚未连接真实 Microduck。
