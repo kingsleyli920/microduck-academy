@@ -1,6 +1,6 @@
 # Privacy and local data / 隐私与本地数据
 
-Microduck Academy v0.1 is local-first and does not require an account.
+Microduck Academy is local-first and does not require an account.
 
 - Language preference, lesson progress, lesson code, Level 1 completion, the current `control.duck` program, its run count, and Level 3 reward configurations and aggregate rollout results are stored in browser `localStorage` under `microduck-academy-progress-v1`.
 - The Learning Path page can export and import this small learning profile as JSON.
@@ -11,7 +11,7 @@ Microduck Academy v0.1 is local-first and does not require an account.
 
 Clearing site data, changing browser profiles, using private browsing, or changing the site origin can remove access to saved progress. Export the JSON profile before doing so.
 
-Microduck Academy v0.1 采用本地优先设计，无需登录。
+Microduck Academy 采用本地优先设计，无需登录。
 
 - 语言偏好、关卡进度、每关代码、Level 1 实验完成状态、当前 `control.duck` 程序、运行次数，以及 Level 3 的 reward 配置和汇总 rollout 结果，保存在浏览器 `localStorage` 的 `microduck-academy-progress-v1` 键中。
 - “学习路线”页面可以把这份小型学习档案导出或导入为 JSON。

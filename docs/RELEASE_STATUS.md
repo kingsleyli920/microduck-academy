@@ -2,6 +2,8 @@
 
 [中文](RELEASE_STATUS.zh-CN.md) · English
 
+Current version: `v0.2.0-preview`
+
 Microduck Academy is a public preview. The repository is suitable for learning, experimentation, and contribution, but does not yet provide an end-to-end policy-training and hardware-deployment workflow.
 
 | Capability | Status |
@@ -26,6 +28,15 @@ Microduck Academy is a public preview. The repository is suitable for learning, 
 The selected language is stored with the browser-local learning profile. Switching languages preserves learner-edited code and experiment records.
 
 The CI validates source hygiene, bilingual structure, Markdown links, tests, lint, TypeScript, and the production build. Simulator interaction is additionally checked in a real local browser because generated upstream assets are intentionally absent from GitHub Actions.
+
+## Release verification
+
+```bash
+npm ci
+npm run setup:runtime
+npm run verify
+npm run academy
+```
 
 ## Distribution boundary
 

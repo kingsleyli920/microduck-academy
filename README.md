@@ -10,6 +10,8 @@
 
 这是独立的社区课堂项目，与 Pollen Robotics 或 Hugging Face 没有隶属、合作或背书关系。
 
+![Microduck Academy：边学习强化学习，边构建 Microduck 工具](docs/assets/linkedin-launch.jpg)
+
 **项目状态：公开 Preview。** Level 0–3 已能在本地课堂中运行；PPO 训练、ONNX 导出和真机安装仍在路线图中。能力声明以[发布状态](docs/RELEASE_STATUS.zh-CN.md)为准，运行和数据边界见[架构文档](docs/ARCHITECTURE.md)。
 
 ![Microduck Academy 中文课程界面](docs/assets/course.zh-CN.jpg)
