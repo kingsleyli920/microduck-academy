@@ -1,5 +1,7 @@
 # Third-party notices
 
+[简体中文](THIRD_PARTY_NOTICES.zh-CN.md) · English
+
 This project integrates software and assets from the following upstream projects. Their original licenses continue to apply to their respective files.
 
 ## Microduck simulator and robot assets

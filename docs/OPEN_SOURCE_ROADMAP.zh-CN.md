@@ -1,5 +1,7 @@
 # Microduck Academy：开源学习平台可行性与产品路线
 
+[English](OPEN_SOURCE_ROADMAP.md) · 简体中文
+
 研究日期：2026-09-10
 目标读者：懂软件与 Agent 工程、刚开始学习强化学习的开发者
 
@@ -19,7 +21,7 @@
 
 ### 1. 编排已有动作
 
-`roll()`、`kick("left")`、`ground_pick()` 之类的代码调用已经训练好的 ONNX policy。它类似 Agent 调用现成 tool：用户写的是控制流，真正的运动技能已经存在。按键绑定也属于这一层。官方 simulator 暴露了 `triggerRoll`、`triggerKick`、`triggerGroundPick`、`resetSim` 等运行时入口；当前 Academy 原型已通过同源 iframe 桥接调用它们。
+`roll()`、`kick("left")`、`ground_pick()` 之类的代码调用已经训练好的 ONNX policy。它类似 Agent 调用现成 tool：用户编写控制流，运动 policy 已经训练完成。按键绑定也属于这一层。官方 simulator 暴露了 `triggerRoll`、`triggerKick`、`triggerGroundPick`、`resetSim` 等运行时入口；当前 Academy 原型已通过同源 iframe 桥接调用它们。
 
 这条路线即时、稳定、无需 GPU。社区给官方 simulator 增加 click-to-walk 的合并贡献也是同一模式：把点击位置变成现有 locomotion policy 已经能跟踪的速度命令，没有训练新 policy。[10]
 
@@ -31,7 +33,7 @@
 
 如果目标是从未存在过的翻跟头、鞠躬或新步态，用户需要定义训练任务：初始状态、command、observation、action、reward、termination 和 domain randomization；然后在大量并行环境中用 PPO 收集 rollout 并更新 policy。训练结果导出为 `[1,61] → [1,14]` ONNX，先在模拟器评估，再生成 Microduck policy manifest，最后由真机运行时加载。[2][4]
 
-所以，“给 B 键绑定翻滚”只需要第 1 层；“让鸭子学会一个以前不会的后空翻”需要第 3 层。两者都应该在课堂中出现，但不能让用户误以为一段动作脚本会自动变成新的神经网络技能。
+所以，“给 B 键绑定翻滚”可以在第 1 层完成；“训练一个以前不存在的后空翻”则需要第 3 层。两者都应该在课堂中出现，但不能让用户误以为一段动作脚本会自动变成新的神经网络技能。
 
 ## 官方技术链路
 
@@ -69,7 +71,7 @@
 | Blockly Games | 开源、离线和闯关式编程 | 明确的地图、即时反馈、解锁和分享作品 |
 | freeCodeCamp | 登录后把 challenge 完成记录关联到用户 | 账号同步作为增强层，不阻塞匿名学习 |
 
-LeLab 是最接近“一站式机器人学习 GUI”的公开参照：它能配置机器人、遥操作、记录数据、训练、查看训练进度并运行 policy，但目前只支持 SO-101。[5] Academy 的机会是为 biped RL 提供同样顺畅的体验，并增加真正的教学关卡和浏览器 simulator。
+LeLab 是较完整的机器人学习 GUI 参照：它能配置机器人、遥操作、记录数据、训练、查看训练进度并运行 policy，但目前只支持 SO-101。[5] Academy 可以为 biped RL 提供类似的集成体验，并增加结构化课程和浏览器 simulator。
 
 ## 课程结构
 
@@ -164,7 +166,7 @@ Reputation 来自可复用成果和持续维护，不只来自 star 数。最有
 2. 把课程、simulator adapter 和 policy contract 拆清楚，提供贡献指南与 good first issue。
 3. 为每个 release 保存浏览器验收、固定版本、已知限制和短 demo。
 4. 把通用改进回馈上游，例如正式 simulator bridge、可访问性、文档、policy validator 或小型测试。
-5. 发布一个真正的新 Microduck policy，附可复现训练命令、commit、manifest、固定 seed eval 和失败案例。
+5. 发布一个经过训练的新 Microduck policy，附可复现训练命令、commit、manifest、固定 seed eval 和失败案例。
 6. 硬件到货后补上真机 telemetry 与 sim-to-real 报告。这会是项目从“漂亮 demo”走向可信工具的关键证据。
 
 建议项目早期避免自己造通用 RL framework。我们的独特价值是教学编排、可视化、运行证据和 Microduck 端到端集成；训练算法继续依赖官方 MJLab/PPO 栈。

@@ -1,5 +1,7 @@
 # Microduck Academy Control API
 
+[English](CONTROL_API.md) · 简体中文
+
 这份文档完整描述 Level 2 的 `control.duck` 语言。它是一层很薄的教学运行时：程序直接读取官方模拟器的 61D observation、向 50 Hz policy 发送 command，并切换官方或社区训练好的 ONNX policy。
 
 当前能力表已逐项对照 `control.duck` 解释器和官方模拟器提交 `023172c`（2026-09-10）。这里的“完整”特指本版本解释器接受的全部语法，不表示社区里未来发布的所有动作，也不把 `window.rl` 的 MuJoCo 内存、渲染循环和测试钩子当成稳定 API。

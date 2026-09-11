@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Microduck 强化学习闯关课堂',
-  description: '从零开始，在浏览器中学习强化学习并理解 Microduck。',
+  title: 'Microduck Academy',
+  description: 'A bilingual, local-first reinforcement learning classroom for Microduck.',
   icons: { icon: '/favicon.svg' },
 };
 

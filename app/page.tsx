@@ -1,15 +1,16 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bird, BookOpen, Check, CheckCircle2, ChevronRight, Circle, Download, FileCode2,
-  FlaskConical, Loader2, Lock, Map, Play, RotateCcw, Square, Trophy, Upload, XCircle,
+  FlaskConical, Languages, Loader2, Lock, Map, Play, RotateCcw, Square, Trophy, Upload, XCircle,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress';
 import { Textarea } from '@/components/ui/textarea';
-import { lessons, type Lesson } from './lessons';
+import { getLessons, lessons as lessonsZh, type Lesson } from './lessons';
+import { learningLevels, localeNames, referenceProjects, rlContexts, uiCopy, type Locale } from './i18n';
 import { SimulatorInspector, type SimulatorTelemetry } from './simulator-inspector';
 import { ControlStudio } from './control-studio';
 import { parseControlProgram, parseNumberArguments, type ControlProgramNode } from './control-program';
@@ -66,7 +67,8 @@ type AcademyInputSource = {
 };
 type SimulatorWindow = Window & typeof globalThis & { rl?: SimulatorRl; academySource?: AcademyInputSource };
 type SavedProgress = {
-  schemaVersion: 5;
+  schemaVersion: 6;
+  locale: Locale;
   currentId: number;
   completed: number[];
   solutions: Record<number, string>;
@@ -101,97 +103,48 @@ if obs[5] < -0.85 {
 wait(2200)
 reset()`;
 
-const learningLevels = [
-  { level: 'Level 0', title: '强化学习心智模型', status: '现在可学 · 9 关', detail: '用 Python 掌握 environment、observation、action、reward、rollout、return、PPO 与部署安全。' },
-  { level: 'Level 1', title: '读懂真实策略', status: '现在可学 · 6 个实验', detail: '在官方模拟器中观察 61D observation、14D action、50 Hz 控制循环和 policy 切换。' },
-  { level: 'Level 2', title: '编写实时控制程序', status: '现在可用', detail: '用 drive、turn、look、if、repeat 和 observation 分支控制 50 Hz policy，也能调用已有 skills。' },
-  { level: 'Level 3', title: '任务与 Reward 实验室', status: '现在可学 · A/B 实验', detail: '在官方 MuJoCo 中配置 command、reward 与 termination，采集真实 rollout 并比较 return。' },
-  { level: 'Level 4', title: '训练与评估 Policy', status: '需要 NVIDIA GPU / HF Jobs', detail: '并行 rollout、PPO 训练、checkpoint 对比、录像与指标评估，排查 reward hacking。' },
-  { level: 'Level 5', title: '发布 ONNX Skill', status: '官方接口已具备', detail: '导出 [1,61] → [1,14] ONNX，生成 manifest，放进浏览器竞技场和 Hugging Face Hub。' },
-  { level: 'Level 6', title: '部署到真实 Microduck', status: '硬件到货后', detail: '通过 robotctl 安装策略，先限速和空载验证，再记录真机 observation 做 sim-to-real 对比。' },
-];
+const DEFAULT_SIMULATOR_SCRIPTS: Record<Locale, string> = {
+  'zh-CN': DEFAULT_SIMULATOR_SCRIPT,
+  en: `# Continuous commands are sent to the walk policy at 50 Hz
+drive(0.18, 0.0, 1200)
+turn(0.7, 650)
 
-const referenceProjects = [
-  { name: 'Microduck + microduck_rl', role: '我们的真实目标接口', note: '官方运行时、MJLab/PPO 训练、ONNX 导出和策略 manifest。', href: 'https://github.com/pollen-robotics/microduck' },
-  { name: 'Microduck Simulator', role: '浏览器物理与推理', note: 'MuJoCo WASM + onnxruntime-web，真实策略以 50 Hz 在浏览器运行。', href: 'https://huggingface.co/spaces/pollen-robotics/microduck-simulator' },
-  { name: 'LeLab / LeRobot', role: '一站式产品参照', note: '把配置、遥操作、数据、训练和部署放进一个 GUI；当前 LeLab 只支持 SO-101。', href: 'https://github.com/huggingface/leLab' },
-  { name: 'MuJoCo Playground', role: '训练与 sim-to-real 参照', note: '开源 GPU 机器人学习环境，展示任务、训练、评估和真机迁移的工程结构。', href: 'https://github.com/google-deepmind/mujoco_playground' },
-  { name: 'Gymnasium Robotics', role: '环境 API 参照', note: '用统一 reset/step/observation/action 契约组织 MuJoCo 机器人任务。', href: 'https://github.com/Farama-Foundation/Gymnasium-Robotics' },
-  { name: 'JupyterLite / Blockly Games', role: '免登录学习体验参照', note: '浏览器运行、持久化与离线学习；适合作为 local-first 课堂的产品基线。', href: 'https://jupyterlite.readthedocs.io/en/stable/' },
-];
+# Read the live observation before choosing the next action
+print(obs[5])
+if obs[5] < -0.85 {
+  look(0.35, -0.15, 0.45, 0.0, 800)
+  skill("roll")
+}
 
-const rlContexts: Record<number, { role: string; analogy: string; realUse: string }> = {
-  1: {
-    role: 'Environment / Reward',
-    analogy: '类似 Agent 系统里的 evaluator，但 reward 会在每个 simulation step 高频执行。',
-    realUse: '训练环境根据位移、姿态和终止条件给分；它只参与训练，不部署到硬件。',
-  },
-  2: {
-    role: 'Observation → Policy → Action',
-    analogy: '类似把 state/context 交给 agent，再由 agent 选择 tool call。',
-    realUse: '真实策略读取关节角、角速度、机身姿态等 observation，输出关节目标。',
-  },
-  3: {
-    role: 'Command-conditioned Policy',
-    analogy: '类似把用户目标作为 context 的一部分，让同一个 agent 执行不同任务。',
-    realUse: '目标速度或方向会并入 observation，使一个策略能响应不同运动指令。',
-  },
-  4: {
-    role: 'Rollout / Trajectory',
-    analogy: '类似一条完整 agent trace：状态、动作、结果按时间组成一条轨迹。',
-    realUse: '训练并行收集大量 episode，再用 return、成功率和行为录像评估策略。',
-  },
-  5: {
-    role: 'Stochastic Policy',
-    analogy: '类似模型采样温度，但这里是在连续动作分布中探索关节控制。',
-    realUse: 'PPO 训练时从 actor 分布采样；部署时通常取均值以获得稳定动作。',
-  },
-  6: {
-    role: 'Return / Value Estimation',
-    analogy: '类似给长链路 agent 结果做 temporal credit assignment。',
-    realUse: '折扣回报和 value function 用来估计动作的长期影响，并降低策略梯度方差。',
-  },
-  7: {
-    role: 'PPO Policy Update',
-    analogy: '类似限制一次 model update 不要偏离旧策略太远。',
-    realUse: 'Microduck 连续控制使用 actor-critic 路线；PPO clip 约束新旧策略概率比。',
-  },
-  8: {
-    role: 'Reward Design / Evaluation',
-    analogy: '与 Agent evaluator 被 gaming 的问题相同：指标提升不等于任务真的完成。',
-    realUse: '必须同时检查 reward 曲线、成功率、能耗、跌倒率和真实动作录像。',
-  },
-  9: {
-    role: 'Deployment / Safety Layer',
-    analogy: '类似 tool execution 前的 policy guard 与参数校验。',
-    realUse: 'ONNX policy 输出经过限位和安全检查，再由控制循环发送给真实关节。',
-  },
+wait(2200)
+reset()`,
 };
 
-function MiniLab({ lesson, result, running }: { lesson: Lesson; result: RunResult | null; running: boolean }) {
+function MiniLab({ lesson, result, running, locale }: { lesson: Lesson; result: RunResult | null; running: boolean; locale: Locale }) {
+  const text = uiCopy[locale];
   const successful = Boolean(result?.passed);
   const lastActual = result?.results.at(-1)?.actual ?? '—';
   return (
-    <section className={`mini-lab lesson-${lesson.id} ${successful ? 'is-successful' : ''}`} aria-label="本关即时演示">
+    <section className={`mini-lab lesson-${lesson.id} ${successful ? 'is-successful' : ''}`} aria-label={text.miniLabLabel}>
       <div className="lab-title-row">
-        <div><p className="eyebrow">即时可视化</p><h3>{lesson.labTitle}</h3></div>
-        <span className="lab-badge">小实验</span>
+        <div><p className="eyebrow">{text.liveResult}</p><h3>{lesson.labTitle}</h3></div>
+        <span className="lab-badge">{text.testCases}</span>
       </div>
       <div className="duck-stage" aria-hidden="true">
-        <div className="target-flag">目标</div>
+        <div className="target-flag">{text.target}</div>
         <div className={`duck-runner ${running ? 'is-running' : ''} ${successful ? 'did-pass' : ''}`}><Bird /></div>
         <div className="track-line" />
       </div>
       <div className="lab-readout">
-        <span>最后一组输出</span><strong>{lastActual}</strong>
-        <span>状态</span><strong>{running ? '计算中' : successful ? '符合目标' : result ? '需要修改' : '等待运行'}</strong>
+        <span>{text.lastOutput}</span><strong>{lastActual}</strong>
+        <span>{text.status}</span><strong>{running ? text.calculating : successful ? text.matchesTarget : result ? text.needsChange : text.waiting}</strong>
       </div>
-      <div className="trial-strip" aria-label="Microduck 测试场景">
+      <div className="trial-strip" aria-label={text.miniLabLabel}>
         {lesson.tests.map((test, index) => {
           const testResult = result?.results[index];
           return <div key={test.label} className={testResult?.passed ? 'trial-pass' : ''}>
             <span>{test.label}</span>
-            <strong>{testResult ? testResult.actual : '待运行'}</strong>
+            <strong>{testResult ? testResult.actual : text.notRun}</strong>
           </div>;
         })}
       </div>
@@ -201,11 +154,12 @@ function MiniLab({ lesson, result, running }: { lesson: Lesson; result: RunResul
 }
 
 export default function Home() {
+  const [locale, setLocale] = useState<Locale>('zh-CN');
   const [view, setView] = useState<'course' | 'simulator' | 'roadmap'>('course');
   const [currentId, setCurrentId] = useState(1);
   const [completed, setCompleted] = useState<number[]>([]);
   const [solutions, setSolutions] = useState<Record<number, string>>(() =>
-    Object.fromEntries(lessons.map((item) => [item.id, item.starter])),
+    Object.fromEntries(lessonsZh.map((item) => [item.id, item.starter])),
   );
   const [hintOpen, setHintOpen] = useState(false);
   const [runtime, setRuntime] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -239,11 +193,31 @@ export default function Home() {
   const scriptRunIdRef = useRef(0);
   const rewardRunIdRef = useRef(0);
 
+  const lessons = getLessons(locale);
+  const text = uiCopy[locale];
+  const localeLevels = learningLevels[locale];
+  const localeReferences = referenceProjects[locale];
   const lesson = lessons[currentId - 1];
-  const rlContext = rlContexts[currentId];
+  const rlContext = rlContexts[locale][currentId as keyof typeof rlContexts[typeof locale]];
   const code = solutions[currentId] ?? lesson.starter;
   const unlocked = Math.min(lessons.length, Math.max(1, ...completed.map((id) => id + 1)));
   const progress = (completed.length / lessons.length) * 100;
+  const phrase = useCallback((zh: string, en: string) => locale === 'en' ? en : zh, [locale]);
+
+  const changeLocale = (nextLocale: Locale) => {
+    if (nextLocale === locale) return;
+    const currentLessons = getLessons(locale);
+    const nextLessons = getLessons(nextLocale);
+    setSolutions((previous) => Object.fromEntries(nextLessons.map((nextLesson, index) => {
+      const currentStarter = currentLessons[index].starter;
+      const currentValue = previous[nextLesson.id] ?? currentStarter;
+      return [nextLesson.id, currentValue === currentStarter ? nextLesson.starter : currentValue];
+    })));
+    setSimulatorScript((current) => current === DEFAULT_SIMULATOR_SCRIPTS[locale] ? DEFAULT_SIMULATOR_SCRIPTS[nextLocale] : current);
+    setLocale(nextLocale);
+    setResult(null);
+    setSimulatorStatus(nextLocale === 'en' ? 'Waiting for the official simulator…' : '正在等待官方模拟器加载…');
+  };
 
   // This one-time hydration intentionally restores browser-only local progress.
   // oxlint-disable-next-line react/react-compiler
@@ -252,7 +226,8 @@ export default function Home() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved) as Partial<SavedProgress>;
-        setCurrentId(Math.min(lessons.length, Math.max(1, parsed.currentId || 1)));
+        if (parsed.locale === 'zh-CN' || parsed.locale === 'en') setLocale(parsed.locale);
+        setCurrentId(Math.min(lessonsZh.length, Math.max(1, parsed.currentId || 1)));
         setCompleted(Array.isArray(parsed.completed) ? parsed.completed : []);
         setSolutions((previous) => ({ ...previous, ...parsed.solutions }));
         if (typeof parsed.simulatorScript === 'string') {
@@ -279,12 +254,17 @@ export default function Home() {
   useEffect(() => {
     if (!hydrated) return;
     const saved: SavedProgress = {
-      schemaVersion: 5, currentId, completed, solutions, simulatorScript, simulatorRuns, level1Completed,
+      schemaVersion: 6, locale, currentId, completed, solutions, simulatorScript, simulatorRuns, level1Completed,
       rewardConfigs, rewardResults, level3Completed,
       updatedAt: new Date().toISOString(),
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-  }, [completed, currentId, hydrated, level1Completed, level3Completed, rewardConfigs, rewardResults, simulatorRuns, simulatorScript, solutions]);
+  }, [completed, currentId, hydrated, level1Completed, level3Completed, locale, rewardConfigs, rewardResults, simulatorRuns, simulatorScript, solutions]);
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+    document.title = text.appTitle;
+  }, [locale, text.appTitle]);
 
   useEffect(() => {
     if (view !== 'simulator') return;
@@ -309,9 +289,9 @@ export default function Home() {
           }
         }
         if (rl && !simulatorRunning) {
-          setSimulatorStatus(!entered ? '正在加载官方 MuJoCo 与 ONNX 策略' : rl.mode === 'walk'
-            ? `桥接已就绪 · 当前 ${rl.loco === 'legs' ? '双腿' : '轮滑'} / ${rl.mode}`
-            : `桥接已就绪 · 当前动作 ${rl.mode}`);
+          setSimulatorStatus(!entered ? phrase('正在加载官方 MuJoCo 与 ONNX 策略', 'Loading official MuJoCo and ONNX policies') : rl.mode === 'walk'
+            ? phrase(`桥接已就绪 · 当前 ${rl.loco === 'legs' ? '双腿' : '轮滑'} / ${rl.mode}`, `Bridge ready · ${rl.loco} / ${rl.mode}`)
+            : phrase(`桥接已就绪 · 当前动作 ${rl.mode}`, `Bridge ready · active policy ${rl.mode}`));
         }
       } catch {
         setSimulatorReady(false);
@@ -320,7 +300,7 @@ export default function Home() {
     inspectSimulator();
     const poll = window.setInterval(inspectSimulator, 500);
     return () => window.clearInterval(poll);
-  }, [simulatorRunning, telemetryPaused, view]);
+  }, [phrase, simulatorRunning, telemetryPaused, view]);
 
   useEffect(() => () => {
     if (driveTimerRef.current) window.clearTimeout(driveTimerRef.current);
@@ -335,7 +315,7 @@ export default function Home() {
       const rl = (simulatorFrameRef.current?.contentWindow as SimulatorWindow | null)?.rl;
       if (!rl) return;
       rl.triggerRoll('academy-hotkey');
-      setSimulatorStatus('已从课堂快捷键 B 调用 roll policy');
+      setSimulatorStatus(phrase('已通过快捷键 B 调用 roll policy', 'Triggered the roll policy with keyboard shortcut B'));
     };
     window.addEventListener('keydown', runHotkey);
     const frameWindow = simulatorFrameRef.current?.contentWindow;
@@ -344,7 +324,7 @@ export default function Home() {
       window.removeEventListener('keydown', runHotkey);
       frameWindow?.removeEventListener('keydown', runHotkey);
     };
-  }, [simulatorEntered, simulatorReady, view]);
+  }, [phrase, simulatorEntered, simulatorReady, view]);
 
   useEffect(() => {
     const worker = new Worker('/python-worker.js');
@@ -390,7 +370,7 @@ export default function Home() {
       workerRef.current?.terminate();
       setRuntime('error');
       setRunning(false);
-      setResult({ results: [], passed: false, stdout: '', error: '代码运行超过 20 秒。请刷新页面后检查是否写了无限循环。' });
+      setResult({ results: [], passed: false, stdout: '', error: text.timeout });
     }, 20_000);
   };
 
@@ -447,7 +427,7 @@ export default function Home() {
     });
     setTelemetryPaused(true);
     completeLevelOne(2);
-    setSimulatorStatus('已冻结一帧真实的 61D observation');
+    setSimulatorStatus(phrase('已冻结一帧 61D observation', 'Captured one 61D observation frame'));
   };
   const driveFromAcademy = () => {
     const rl = getSimulator();
@@ -458,12 +438,12 @@ export default function Home() {
     source.command[0] = 0.2; source.command[1] = 0; source.command[2] = 0;
     source.active = true;
     completeLevelOne(3);
-    setSimulatorStatus('Academy source 正在发送 vx=0.20 m/s');
+    setSimulatorStatus(phrase('Academy 控制源正在发送 vx=0.20 m/s', 'Academy input is sending vx=0.20 m/s'));
     if (driveTimerRef.current) window.clearTimeout(driveTimerRef.current);
     driveTimerRef.current = window.setTimeout(() => {
       source.active = false;
       source.command.fill(0);
-      setSimulatorStatus('速度命令结束，policy 回到站立目标');
+      setSimulatorStatus(phrase('速度命令结束，policy 已恢复站立目标', 'Speed command ended; the policy returned to its standing target'));
     }, 1800);
   };
   const resetLevelOneExperiment = () => {
@@ -474,7 +454,7 @@ export default function Home() {
     rl.resetSim();
     setTelemetryPaused(false);
     if (level1Completed.includes(5)) completeLevelOne(6);
-    setSimulatorStatus('已重置物理世界并交还 walk policy');
+    setSimulatorStatus(phrase('物理环境已重置，控制权已交还 walk policy', 'Physics reset; control returned to the walk policy'));
   };
   const replayLevelOne = () => {
     const rl = getSimulator();
@@ -483,12 +463,12 @@ export default function Home() {
     rl?.resetSim();
     setLevel1Completed([]);
     setTelemetryPaused(false);
-    setSimulatorStatus('Level 1 已重新开始');
+    setSimulatorStatus(phrase('Level 1 已重置', 'Level 1 reset'));
   };
   const invokeSimulatorAction = (action: 'roll' | 'kick-left' | 'kick-right' | 'ground-pick' | 'ball' | 'reset') => {
     const rl = getSimulator();
     if (!rl) {
-      setSimulatorStatus('官方模拟器还在初始化，请稍等。');
+      setSimulatorStatus(phrase('官方模拟器仍在初始化。', 'The official simulator is still initializing.'));
       return;
     }
     if (action === 'roll') rl.triggerRoll('academy-button');
@@ -497,7 +477,7 @@ export default function Home() {
     if (action === 'ground-pick') rl.triggerGroundPick('academy-button');
     if (action === 'ball') rl.spawnBall();
     if (action === 'reset') rl.resetSim();
-    setSimulatorStatus(`课堂已发送 ${action} · 模拟器 mode=${rl.mode}`);
+    setSimulatorStatus(phrase(`已发送 ${action} · 模拟器 mode=${rl.mode}`, `Sent ${action} · simulator mode=${rl.mode}`));
   };
   const addSimulatorTrace = (message: string) => setSimulatorTrace((previous) => [...previous, message].slice(-30));
   const waitForProgram = async (milliseconds: number, runId: number) => {
@@ -509,7 +489,7 @@ export default function Home() {
   };
   const executeControlCommand = async (node: Extract<ControlProgramNode, { type: 'command' }>, rl: SimulatorRl, source: AcademyInputSource, runId: number) => {
     const command = node.source;
-    setSimulatorStatus(`第 ${node.line} 行 · ${command}`);
+    setSimulatorStatus(phrase(`第 ${node.line} 行 · ${command}`, `Line ${node.line} · ${command}`));
 
     const driveMatch = command.match(/^drive\((.*)\)$/);
     const turnMatch = command.match(/^turn\((.*)\)$/);
@@ -525,8 +505,8 @@ export default function Home() {
 
     if (driveMatch || turnMatch) {
       const [vxRaw, yawRaw, milliseconds] = driveMatch
-        ? parseNumberArguments(driveMatch[1], node.line, 3)
-        : [0, ...parseNumberArguments(turnMatch?.[1] ?? '', node.line, 2)];
+        ? parseNumberArguments(driveMatch[1], node.line, 3, locale)
+        : [0, ...parseNumberArguments(turnMatch?.[1] ?? '', node.line, 2, locale)];
       const vx = Math.min(rl.loco === 'rollers' ? 0.6 : 0.25, Math.max(rl.loco === 'rollers' ? -0.5 : -0.2, vxRaw));
       const yaw = Math.min(rl.loco === 'rollers' ? 0.3 : 1, Math.max(rl.loco === 'rollers' ? -0.3 : -1, yawRaw));
       source.command[0] = vx; source.command[1] = 0; source.command[2] = yaw; source.active = true;
@@ -537,7 +517,7 @@ export default function Home() {
     }
 
     if (lookMatch) {
-      const [neck, pitch, yaw, roll, milliseconds] = parseNumberArguments(lookMatch[1], node.line, 5);
+      const [neck, pitch, yaw, roll, milliseconds] = parseNumberArguments(lookMatch[1], node.line, 5, locale);
       if (!rl.headMode) rl.toggleHeadMode();
       [neck, pitch, yaw, roll].forEach((value, index) => { rl.headTarget[index] = Math.min(2.5, Math.max(-2.5, value)); });
       addSimulatorTrace(`L${node.line} head target = [${[neck, pitch, yaw, roll].map((value) => value.toFixed(2)).join(', ')}]`);
@@ -547,7 +527,7 @@ export default function Home() {
     }
 
     if (waitMatch) {
-      const [milliseconds] = parseNumberArguments(waitMatch[1], node.line, 1);
+      const [milliseconds] = parseNumberArguments(waitMatch[1], node.line, 1, locale);
       addSimulatorTrace(`L${node.line} wait ${milliseconds} ms`);
       await waitForProgram(milliseconds, runId);
       return;
@@ -555,13 +535,13 @@ export default function Home() {
 
     if (printMatch) {
       const index = Number(printMatch[1]);
-      if (index > 60) throw new Error(`第 ${node.line} 行：observation 下标必须在 0–60。`);
+      if (index > 60) throw new Error(phrase(`第 ${node.line} 行：observation 下标必须在 0–60。`, `Line ${node.line}: observation index must be between 0 and 60.`));
       addSimulatorTrace(`L${node.line} obs[${index}] = ${rl.buildObs()[index].toFixed(4)}`);
       return;
     }
 
     if (pushMatch) {
-      const values = parseNumberArguments(pushMatch[1], node.line, 6);
+      const values = parseNumberArguments(pushMatch[1], node.line, 6, locale);
       const safe = values.map((value, index) => Math.min(index < 3 ? 2 : 8, Math.max(index < 3 ? -2 : -8, value)));
       rl.debugPush(safe[0], safe[1], safe[2], safe[3], safe[4], safe[5]);
       addSimulatorTrace(`L${node.line} push = [${safe.map((value) => value.toFixed(2)).join(', ')}]`);
@@ -586,11 +566,11 @@ export default function Home() {
     if (moveMatch) {
       const ref = moveMatch[1].trim();
       if (!/^(?:[\w.-]+\/[\w.-]+|session:[\w.-]+(?::[\w.-]+)?|https?:\/\/\S+\.onnx(?:\?\S*)?)$/i.test(ref)) {
-        throw new Error(`第 ${node.line} 行：move 需要 org/repo、session:id 或 .onnx URL。`);
+        throw new Error(phrase(`第 ${node.line} 行：move 需要 org/repo、session:id 或 .onnx URL。`, `Line ${node.line}: move expects org/repo, session:id, or an .onnx URL.`));
       }
-      addSimulatorTrace(`L${node.line} 正在校验并加载 ${ref}`);
+      addSimulatorTrace(phrase(`L${node.line} 正在校验并加载 ${ref}`, `L${node.line} validating and loading ${ref}`));
       await rl.loadCustomPolicy(ref);
-      if (rl.customPolicy?.ref !== ref) throw new Error(`第 ${node.line} 行：动作未能加载；原策略仍保持启用。`);
+      if (rl.customPolicy?.ref !== ref) throw new Error(phrase(`第 ${node.line} 行：动作未能加载；原策略仍保持启用。`, `Line ${node.line}: the motion failed to load; the previous policy remains active.`));
       addSimulatorTrace(`L${node.line} move = ${rl.customPolicy.name} · ${rl.customPolicy.kind}/${rl.customPolicy.slot}`);
       return;
     }
@@ -601,27 +581,27 @@ export default function Home() {
     else if (skill === 'kick_right' || legacyKickMatch?.[1] === 'right') rl.triggerKick('right', 'academy-program');
     else if (skill === 'ground_pick' || command === 'ground_pick()') rl.triggerGroundPick('academy-program');
     else if (skill === 'crouch') {
-      if (rl.loco !== 'rollers') throw new Error(`第 ${node.line} 行：crouch 需要先调用 rollers()。`);
+      if (rl.loco !== 'rollers') throw new Error(phrase(`第 ${node.line} 行：crouch 需要先调用 rollers()。`, `Line ${node.line}: call rollers() before crouch.`));
       rl.triggerCrouch('academy-program');
     }
     else if (command === 'ball()' || command === 'spawn_ball()') rl.spawnBall();
     else if (command === 'rollers()') await rl.setLoco('rollers');
     else if (command === 'legs()') await rl.setLoco('legs');
     else if (command === 'sit()') {
-      if (rl.loco !== 'legs') throw new Error(`第 ${node.line} 行：sit 只支持双腿底盘。`);
+      if (rl.loco !== 'legs') throw new Error(phrase(`第 ${node.line} 行：sit 只支持双腿底盘。`, `Line ${node.line}: sit is available only with the leg base.`));
       if (!(rl.mode === 'sitstand' && rl.sitFlag === 1)) source.onAction?.('sitToggle');
     }
     else if (command === 'stand()' || command === 'walk()') source.onAction?.('walk');
     else if (command === 'quack()') source.onAction?.('quack');
     else if (command === 'play_move()') {
-      if (!rl.customPolicy) throw new Error(`第 ${node.line} 行：请先用 move(ref) 加载社区动作。`);
+      if (!rl.customPolicy) throw new Error(phrase(`第 ${node.line} 行：请先用 move(ref) 加载社区动作。`, `Line ${node.line}: load a community motion with move(ref) first.`));
       if (rl.customPolicy.slot === 'trick') rl.triggerRoll('academy-program');
       else if (rl.customPolicy.slot === 'script') rl.toggleScript();
       else if (rl.customPolicy.slot === 'sitstand') source.onAction?.('sitToggle');
     }
     else if (command === 'official()') rl.clearCustomPolicy();
     else if (command === 'reset()') rl.resetSim();
-    else throw new Error(`第 ${node.line} 行不认识：${command}`);
+    else throw new Error(phrase(`第 ${node.line} 行无法识别：${command}`, `Line ${node.line}: unknown command: ${command}`));
     addSimulatorTrace(`L${node.line} ${command} → mode=${rl.mode}, loco=${rl.loco}`);
     await waitForProgram(80, runId);
   };
@@ -649,7 +629,7 @@ export default function Home() {
     const rl = getSimulator();
     const source = ensureAcademySource();
     if (!rl || !source || simulatorRunning) {
-      setSimulatorStatus('官方模拟器还在初始化，等桥接状态显示“已就绪”。');
+      setSimulatorStatus(phrase('官方模拟器仍在初始化，请等待桥接就绪。', 'The official simulator is still initializing. Wait for the bridge to become ready.'));
       return;
     }
     const runId = scriptRunIdRef.current + 1;
@@ -657,15 +637,15 @@ export default function Home() {
     setSimulatorRunning(true);
     setSimulatorTrace([]);
     try {
-      const program = parseControlProgram(simulatorScript);
+      const program = parseControlProgram(simulatorScript, locale);
       await executeControlNodes(program, rl, source, runId);
       setSimulatorRuns((value) => value + 1);
-      addSimulatorTrace(`完成 · mode=${rl.mode}, loco=${rl.loco}`);
-      setSimulatorStatus(`控制程序完成 · 模拟器 mode=${rl.mode}`);
+      addSimulatorTrace(phrase(`完成 · mode=${rl.mode}, loco=${rl.loco}`, `Complete · mode=${rl.mode}, loco=${rl.loco}`));
+      setSimulatorStatus(phrase(`控制程序完成 · 模拟器 mode=${rl.mode}`, `Control program complete · simulator mode=${rl.mode}`));
     } catch (error) {
-      if (error instanceof Error && error.message === '__PROGRAM_STOPPED__') setSimulatorStatus('控制程序已停止，command 已清零');
+      if (error instanceof Error && error.message === '__PROGRAM_STOPPED__') setSimulatorStatus(phrase('控制程序已停止，command 已清零', 'Control program stopped; command cleared'));
       else {
-        const message = error instanceof Error ? error.message : '控制程序运行失败';
+        const message = error instanceof Error ? error.message : phrase('控制程序运行失败', 'Control program failed');
         addSimulatorTrace(`ERROR · ${message}`);
         setSimulatorStatus(message);
       }
@@ -683,7 +663,7 @@ export default function Home() {
     if (rl?.headMode) rl.toggleHeadMode();
     setSimulatorRunning(false);
     addSimulatorTrace('STOP · command = [0, 0, 0]');
-    setSimulatorStatus('控制程序已停止，command 已清零');
+    setSimulatorStatus(phrase('控制程序已停止，command 已清零', 'Control program stopped; command cleared'));
   };
   const updateRewardConfig = (slot: RewardSlot, config: RewardConfig) => {
     setRewardConfigs((previous) => ({ ...previous, [slot]: sanitizeRewardConfig(config, previous[slot]) }));
@@ -698,7 +678,7 @@ export default function Home() {
     rewardRunIdRef.current = runId;
     setRewardRunning(slot);
     setTelemetryPaused(false);
-    setSimulatorStatus(`实验 ${slot} · 正在重置并准备真实 rollout`);
+    setSimulatorStatus(phrase(`实验 ${slot} · 正在重置并准备 rollout`, `Experiment ${slot} · resetting before rollout`));
 
     let sampleCount = 0;
     let weightedReturn = 0;
@@ -728,7 +708,7 @@ export default function Home() {
         source.active = true;
         startedAt = performance.now();
         previousAt = startedAt;
-        setSimulatorStatus(`实验 ${slot} · command vx=${config.targetSpeed.toFixed(2)} m/s · 正在采样`);
+        setSimulatorStatus(phrase(`实验 ${slot} · command vx=${config.targetSpeed.toFixed(2)} m/s · 正在采样`, `Experiment ${slot} · command vx=${config.targetSpeed.toFixed(2)} m/s · sampling`));
       }
 
       while (ended !== 'stopped' && performance.now() - startedAt < config.durationMs) {
@@ -781,8 +761,8 @@ export default function Home() {
       setLevel3Completed((missions) => hasComparison
         ? [1, 2, 3, 4]
         : Array.from(new Set([...missions, 1, slot === 'A' ? 2 : 3])).sort((a, b) => a - b));
-      setSimulatorStatus(`实验 ${slot} 完成 · return=${weightedReturn.toFixed(3)} · ${sampleCount} samples · ${ended}`);
-    } else setSimulatorStatus(`实验 ${slot} 未采到有效数据，请重新运行`);
+      setSimulatorStatus(phrase(`实验 ${slot} 完成 · return=${weightedReturn.toFixed(3)} · ${sampleCount} samples · ${ended}`, `Experiment ${slot} complete · return=${weightedReturn.toFixed(3)} · ${sampleCount} samples · ${ended}`));
+    } else setSimulatorStatus(phrase(`实验 ${slot} 未采集到有效数据，请重新运行`, `Experiment ${slot} collected no valid samples; run it again`));
     if (rewardRunIdRef.current === runId) setRewardRunning(null);
   };
   const stopRewardRollout = () => {
@@ -790,7 +770,7 @@ export default function Home() {
     const source = ensureAcademySource();
     if (source) { source.active = false; source.command.fill(0); }
     setRewardRunning(null);
-    setSimulatorStatus('Reward rollout 已停止，command 已清零');
+    setSimulatorStatus(phrase('Reward rollout 已停止，command 已清零', 'Reward rollout stopped; command cleared'));
   };
   const resetRewardLab = () => {
     stopRewardRollout();
@@ -798,11 +778,11 @@ export default function Home() {
     setRewardConfigs({ A: { ...defaultRewardConfigs.A }, B: { ...defaultRewardConfigs.B } });
     setRewardResults({});
     setLevel3Completed([]);
-    setSimulatorStatus('Level 3 已重置');
+    setSimulatorStatus(phrase('Level 3 已重置', 'Level 3 reset'));
   };
   const exportProfile = () => {
     const profile: SavedProgress = {
-      schemaVersion: 5, currentId, completed, solutions, simulatorScript, simulatorRuns, level1Completed,
+      schemaVersion: 6, locale, currentId, completed, solutions, simulatorScript, simulatorRuns, level1Completed,
       rewardConfigs, rewardResults, level3Completed,
       updatedAt: new Date().toISOString(),
     };
@@ -817,6 +797,7 @@ export default function Home() {
     if (!file) return;
     try {
       const profile = JSON.parse(await file.text()) as Partial<SavedProgress>;
+      if (profile.locale === 'zh-CN' || profile.locale === 'en') setLocale(profile.locale);
       setCurrentId(Math.min(lessons.length, Math.max(1, profile.currentId || 1)));
       setCompleted(Array.isArray(profile.completed) ? profile.completed.filter((id) => Number.isInteger(id) && id >= 1 && id <= lessons.length) : []);
       setSolutions((previous) => ({ ...previous, ...profile.solutions }));
@@ -830,20 +811,20 @@ export default function Home() {
       if (profile.rewardResults && typeof profile.rewardResults === 'object') setRewardResults(profile.rewardResults);
       if (Array.isArray(profile.level3Completed)) setLevel3Completed(profile.level3Completed.filter((id) => Number.isInteger(id) && id >= 1 && id <= 4));
     } catch {
-      window.alert('这不是有效的 Microduck 学习档案 JSON。');
+      window.alert(text.invalidProfile);
     }
   };
   const stopService = async () => {
     try { await fetch('/__shutdown', { method: 'POST' }); } catch { /* The server may close before replying. */ }
     setServiceStopped(true);
   };
-  const runtimeLabel = useMemo(() => runtime === 'loading' ? '正在准备 Python…' : runtime === 'error' ? 'Python 需要刷新' : 'Python 已就绪', [runtime]);
+  const runtimeLabel = useMemo(() => runtime === 'loading' ? text.pythonLoading : runtime === 'error' ? text.pythonError : text.pythonReady, [runtime, text]);
 
   if (serviceStopped) {
     return (
       <main className="stopped-screen"><div className="stopped-card">
-        <Bird /><p className="eyebrow">MICRODUCK ACADEMY</p><h1>课堂已安全关闭</h1>
-        <p>这个标签页可以直接关掉。下次双击“启动 Microduck 课堂”就会回到这里。</p>
+        <Bird /><p className="eyebrow">MICRODUCK ACADEMY</p><h1>{text.stoppedTitle}</h1>
+        <p>{text.stoppedNote}</p>
       </div></main>
     );
   }
@@ -851,56 +832,54 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <header className="academy-header">
-        <button className="brand-mark" onClick={() => setView('course')} aria-label="返回课堂">MD</button>
-        <div className="brand-copy"><p className="eyebrow">MICRODUCK ACADEMY</p><h1>强化学习闯关课堂</h1></div>
-        <nav className="view-switcher" aria-label="课堂视图">
-          <Button variant={view === 'course' ? 'default' : 'ghost'} size="sm" onClick={() => setView('course')}><BookOpen />闯关课堂</Button>
-          <Button variant={view === 'simulator' ? 'default' : 'ghost'} size="sm" onClick={() => setView('simulator')}><FlaskConical />3D 实验场</Button>
-          <Button variant={view === 'roadmap' ? 'default' : 'ghost'} size="sm" onClick={() => setView('roadmap')}><Map />学习路线</Button>
+        <button className="brand-mark" onClick={() => setView('course')} aria-label={text.backToCourse}>MD</button>
+        <div className="brand-copy"><p className="eyebrow">MICRODUCK ACADEMY</p><h1>{text.appTitle}</h1></div>
+        <nav className="view-switcher" aria-label={text.viewsLabel}>
+          <Button variant={view === 'course' ? 'default' : 'ghost'} size="sm" onClick={() => setView('course')}><BookOpen />{text.course}</Button>
+          <Button variant={view === 'simulator' ? 'default' : 'ghost'} size="sm" onClick={() => setView('simulator')}><FlaskConical />{text.simulator}</Button>
+          <Button variant={view === 'roadmap' ? 'default' : 'ghost'} size="sm" onClick={() => setView('roadmap')}><Map />{text.roadmap}</Button>
         </nav>
+        <div className="language-switcher" aria-label="Language / 语言"><Languages />
+          {(Object.keys(localeNames) as Locale[]).map((item) => <button key={item} className={locale === item ? 'active' : ''} onClick={() => changeLocale(item)}>{localeNames[item]}</button>)}
+        </div>
         <Progress value={progress} className="header-progress">
-          <ProgressLabel>已通过</ProgressLabel><ProgressValue>{() => `${completed.length} / ${lessons.length}`}</ProgressValue>
+          <ProgressLabel>{text.passed}</ProgressLabel><ProgressValue>{() => `${completed.length} / ${lessons.length}`}</ProgressValue>
         </Progress>
-        <Button variant="outline" size="sm" onClick={stopService} className="stop-button"><Square />停止课堂</Button>
+        <Button variant="outline" size="sm" onClick={stopService} className="stop-button"><Square />{text.stopService}</Button>
       </header>
 
       {view === 'roadmap' ? (
         <section className="roadmap-view">
           <div className="roadmap-hero">
-            <div><p className="eyebrow">OPEN-SOURCE ROADMAP</p><h2>从 9 关入门，到给真实小鸭子发布一个 Skill</h2>
-              <p>课程与工程共用同一条 observation → policy → action 契约。每一层都有能运行、能看到、能测量的产物。</p></div>
-            <Button onClick={() => setView('course')}><Play />从 Level 0 继续</Button>
+            <div><p className="eyebrow">OPEN-SOURCE ROADMAP</p><h2>{text.roadmapTitle}</h2>
+              <p>{text.roadmapIntro}</p></div>
+            <Button onClick={() => setView('course')}><Play />{text.continueLevel0}</Button>
           </div>
           <div className="level-roadmap">
-            {learningLevels.map((item) => <article key={item.level}>
+            {localeLevels.map((item) => <article key={item.level}>
               <span>{item.level}</span><h3>{item.title}</h3><b>{item.status}</b><p>{item.detail}</p>
             </article>)}
           </div>
           <div className="roadmap-columns">
             <section className="research-panel">
-              <p className="eyebrow">调研结论</p><h3>为什么这个开源项目可行</h3>
-              <ul>
-                <li>官方已经开放训练、运行时和策略发布契约，我们要补的是“一站式学习与实验 UX”。</li>
-                <li>第一版可完全 local-first：Python、MuJoCo 和 ONNX 都在浏览器运行，访客无需账号。</li>
-                <li>新的动态动作需要训练新 ONNX policy；动作编排层则可以立刻复用 roll、kick 等已有 skills。</li>
-                <li>公开发布前需要解决浏览器 simulator 仓库未声明 LICENSE 的边界，平台代码与上游资产应分离。</li>
-              </ul>
+              <p className="eyebrow">{text.researchLabel}</p><h3>{text.researchTitle}</h3>
+              <ul>{text.researchItems.map((item) => <li key={item}>{item}</li>)}</ul>
             </section>
             <section className="profile-panel">
-              <p className="eyebrow">LOCAL-FIRST 学习档案</p><h3>现在免登录，以后可选同步</h3>
-              <p>当前保存：Level 0 完成 {completed.length}/9 关、Level 1 完成 {level1Completed.length}/6 个实验、每关代码、动作脚本和 {simulatorRuns} 次编排运行。数据只在这个浏览器中。</p>
-              <p><b>隐私：</b>无需登录，不录屏，不上传代码或学习记录。清除浏览器数据前，请先导出 JSON 档案。</p>
+              <p className="eyebrow">{text.localProfile}</p><h3>{text.profileTitle}</h3>
+              <p>{text.profileSummary(completed.length, level1Completed.length, simulatorRuns)}</p>
+              <p><b>{text.privacy}</b>{text.privacyNote}</p>
               <div className="profile-actions">
-                <Button variant="outline" onClick={exportProfile}><Download />导出档案</Button>
-                <Button variant="outline" onClick={() => profileInputRef.current?.click()}><Upload />导入档案</Button>
+                <Button variant="outline" onClick={exportProfile}><Download />{text.exportProfile}</Button>
+                <Button variant="outline" onClick={() => profileInputRef.current?.click()}><Upload />{text.importProfile}</Button>
                 <input ref={profileInputRef} hidden type="file" accept="application/json" onChange={(event) => { void importProfile(event.target.files?.[0]); event.currentTarget.value = ''; }} />
               </div>
-              <small>未来账号只负责跨设备同步、云训练和社区发布；不开账号仍能完整学习。运行轨迹、observation 历史和录像目前不会持久化。</small>
+              <small>{text.futureAccount}</small>
             </section>
           </div>
           <section className="references-panel">
-            <div><p className="eyebrow">PRIMARY SOURCES</p><h3>值得借鉴的开源项目</h3></div>
-            <div className="reference-grid">{referenceProjects.map((project) => <a key={project.name} href={project.href} target="_blank" rel="noreferrer">
+            <div><p className="eyebrow">{text.sources}</p><h3>{text.sourcesTitle}</h3></div>
+            <div className="reference-grid">{localeReferences.map((project) => <a key={project.name} href={project.href} target="_blank" rel="noreferrer">
               <FileCode2 /><span><strong>{project.name}</strong><small>{project.role}</small><p>{project.note}</p></span>
             </a>)}</div>
           </section>
@@ -908,46 +887,42 @@ export default function Home() {
       ) : view === 'simulator' ? (
         <section className="simulator-view">
           <div className="simulator-toolbar">
-            <div><p className="eyebrow">官方 MICRODUCK 模拟器</p><h2>3D 策略实验场</h2>
-              <p>课堂会自动启动官方 MuJoCo 物理与 ONNX 策略；你只需按左侧任务一步步观察。</p></div>
-            <Button variant="outline" onClick={() => setView('course')}><BookOpen />回到课程</Button>
+            <div><p className="eyebrow">{text.officialSimulator}</p><h2>{text.simulatorTitle}</h2>
+              <p>{text.simulatorIntro}</p></div>
+            <Button variant="outline" onClick={() => setView('course')}><BookOpen />{text.backToLessons}</Button>
           </div>
-          <div className="real-training-pipeline" aria-label="从训练到硬件的真实流程">
-            <span><b>1</b> 定义 observation、action、reward</span>
-            <span><b>2</b> GPU 并行 rollout + PPO 更新</span>
-            <span><b>3</b> 导出 policy.onnx</span>
-            <span><b>4</b> 浏览器 3D 回放验证</span>
-            <span><b>5</b> 安全层 → 真实 Microduck</span>
+          <div className="real-training-pipeline" aria-label={text.pipelineLabel}>
+            {text.pipeline.map((item, index) => <span key={item}><b>{index + 1}</b> {item}</span>)}
           </div>
           <div className="simulator-workspace">
             <aside className="action-studio">
-              <div className="studio-tabs" role="tablist" aria-label="实验类型">
-                <button role="tab" aria-selected={simulatorLabTab === 'observe'} onClick={() => setSimulatorLabTab('observe')}>Level 1 · 观察策略</button>
-                <button role="tab" aria-selected={simulatorLabTab === 'compose'} onClick={() => setSimulatorLabTab('compose')}>Level 2 · 控制编程</button>
-                <button role="tab" aria-selected={simulatorLabTab === 'reward'} onClick={() => setSimulatorLabTab('reward')}>Level 3 · Reward 实验</button>
+              <div className="studio-tabs" role="tablist" aria-label={text.experimentTypes}>
+                <button role="tab" aria-selected={simulatorLabTab === 'observe'} onClick={() => setSimulatorLabTab('observe')}>{text.observePolicy}</button>
+                <button role="tab" aria-selected={simulatorLabTab === 'compose'} onClick={() => setSimulatorLabTab('compose')}>{text.controlProgramming}</button>
+                <button role="tab" aria-selected={simulatorLabTab === 'reward'} onClick={() => setSimulatorLabTab('reward')}>{text.rewardExperiment}</button>
               </div>
               {simulatorLabTab === 'observe' ? <SimulatorInspector
                 telemetry={telemetry} completed={level1Completed} paused={telemetryPaused} entered={simulatorEntered}
                 onTogglePause={() => setTelemetryPaused((value) => !value)} onSnapshot={snapshotTelemetry}
-                onDrive={driveFromAcademy} onRoll={() => invokeSimulatorAction('roll')} onReset={resetLevelOneExperiment} onReplay={replayLevelOne}
+                onDrive={driveFromAcademy} onRoll={() => invokeSimulatorAction('roll')} onReset={resetLevelOneExperiment} onReplay={replayLevelOne} locale={locale}
               /> : simulatorLabTab === 'compose' ? <ControlStudio
                 entered={simulatorEntered} running={simulatorRunning} status={simulatorStatus}
                 script={simulatorScript} trace={simulatorTrace} onScriptChange={setSimulatorScript}
-                onRun={() => void runSimulatorScript()} onStop={stopSimulatorScript} onQuick={invokeSimulatorAction}
+                onRun={() => void runSimulatorScript()} onStop={stopSimulatorScript} onQuick={invokeSimulatorAction} locale={locale}
               /> : <RewardLabStudio
                 entered={simulatorEntered} configs={rewardConfigs} results={rewardResults}
                 running={rewardRunning} completed={level3Completed} onConfigChange={updateRewardConfig}
-                onRun={(slot) => void runRewardRollout(slot)} onStop={stopRewardRollout} onReset={resetRewardLab}
+                onRun={(slot) => void runRewardRollout(slot)} onStop={stopRewardRollout} onReset={resetRewardLab} locale={locale}
               />}
             </aside>
-            <div className="simulator-frame-wrap"><iframe ref={simulatorFrameRef} src="/microduck-simulator/?boot=1" title="Microduck 官方 3D 模拟器" allow="autoplay; fullscreen" /></div>
+            <div className="simulator-frame-wrap"><iframe ref={simulatorFrameRef} src="/microduck-simulator/?boot=1" title={text.simulatorFrameTitle} allow="autoplay; fullscreen" /></div>
           </div>
-          <p className="truth-note"><strong>三个层次：</strong>Level 2 编写实时控制程序；Level 3 用真实 rollout 设计和检验 reward；Level 4 才运行 PPO 来更新神经网络权重。只有训练并导出新的 ONNX，鸭子的动作策略才真正改变。</p>
+          <p className="truth-note"><strong>{text.levelBoundary}</strong>{text.levelBoundaryNote}</p>
         </section>
       ) : (
         <div className="academy-shell">
-          <aside className="lesson-map" aria-label="课程关卡">
-            <p className="eyebrow">关卡地图</p>
+          <aside className="lesson-map" aria-label={text.courseMap}>
+            <p className="eyebrow">{text.courseMap}</p>
             <ol>{lessons.map((item) => {
               const isActive = item.id === currentId;
               const isDone = completed.includes(item.id);
@@ -955,58 +930,58 @@ export default function Home() {
               return <li key={item.id} className={isActive ? 'active' : isLocked ? 'locked' : ''}>
                 <button disabled={isLocked} onClick={() => selectLesson(item.id)}>
                   <span className="lesson-node">{isDone ? <CheckCircle2 /> : isLocked ? <Lock /> : isActive ? <Bird /> : <Circle />}</span>
-                  <span><small>第 {item.id} 关</small>{item.shortTitle}</span>
+                  <span><small>{text.lesson}{item.id}{text.lessonSuffix}</small>{item.shortTitle}</span>
                 </button>
               </li>;
             })}</ol>
-            <Button variant="outline" className="map-simulator-button" onClick={() => setView('simulator')}><FlaskConical />打开 3D 实验场</Button>
-            <Button variant="ghost" size="sm" className="reset-course-button" onClick={resetCourse}><RotateCcw />从第 1 关重新学习</Button>
+            <Button variant="outline" className="map-simulator-button" onClick={() => setView('simulator')}><FlaskConical />{text.openSimulator}</Button>
+            <Button variant="ghost" size="sm" className="reset-course-button" onClick={resetCourse}><RotateCcw />{text.resetCourse}</Button>
           </aside>
 
           <section className="lesson-brief">
-            <div><p className="eyebrow">第 {lesson.id} 关 · {lesson.shortTitle.split('：')[0]}</p><h2>{lesson.title}</h2></div>
+            <div><p className="eyebrow">{text.lesson}{lesson.id}{text.lessonSuffix} · {lesson.shortTitle}</p><h2>{lesson.title}</h2></div>
             <p className="mission">{lesson.mission}</p>
-            <div className="concept-flow" aria-label="本关概念流程">
+            <div className="concept-flow" aria-label={text.objective}>
               {lesson.concept.map((concept, index) => <span key={concept}>{concept}{index < lesson.concept.length - 1 && <b>→</b>}</span>)}
             </div>
             <div className="system-role-card">
-              <div><span>这段代码在系统里的角色</span><strong>{rlContext.role}</strong></div>
+              <div><span>{text.codeRole}</span><strong>{rlContext.role}</strong></div>
               <p>{rlContext.realUse}</p>
-              <small>Agent 工程类比：{rlContext.analogy}</small>
+              <small>{text.agentAnalogy}{rlContext.analogy}</small>
             </div>
-            <div className="teacher-note"><strong>这一关验证什么</strong><p>{lesson.teacher}</p></div>
+            <div className="teacher-note"><strong>{text.objective}</strong><p>{lesson.teacher}</p></div>
             {hintOpen && <output className="hint-box">{lesson.hint.map((line) => <code key={line}>{line.replaceAll(' ', '\u00a0')}</code>)}</output>}
-            <Button variant="outline" onClick={() => setHintOpen((value) => !value)}>{hintOpen ? '收起提示' : '给我提示'}</Button>
-            <MiniLab lesson={lesson} result={result} running={running} />
+            <Button variant="outline" onClick={() => setHintOpen((value) => !value)}>{hintOpen ? text.hideHint : text.showHint}</Button>
+            <MiniLab lesson={lesson} result={result} running={running} locale={locale} />
           </section>
 
           <section className="coding-desk">
             <div className="desk-heading">
-              <div><p className="eyebrow">你的代码</p><h2>{lesson.filename}</h2></div>
+              <div><p className="eyebrow">{text.yourCode}</p><h2>{lesson.filename}</h2></div>
               <span className={`runtime-state ${runtime}`}>{runtime === 'loading' && <Loader2 className="spin" />}{runtimeLabel}</span>
             </div>
-            <Textarea aria-label={`第 ${lesson.id} 关 Python 代码`} className="code-editor" spellCheck={false} value={code}
+            <Textarea aria-label={`${text.lesson}${lesson.id}${text.lessonSuffix} Python`} className="code-editor" spellCheck={false} value={code}
               onChange={(event) => { setSolutions((previous) => ({ ...previous, [currentId]: event.target.value })); setResult(null); }} />
             <div className="code-actions">
               <Button onClick={runCode} size="lg" disabled={runtime !== 'ready' || running}>
-                {running ? <Loader2 className="spin" /> : <Play />}{running ? '正在运行' : '运行代码'}
+                {running ? <Loader2 className="spin" /> : <Play />}{running ? text.runningCode : text.runCode}
               </Button>
-              <Button variant="ghost" onClick={resetLesson}><RotateCcw />恢复初始代码</Button>
+              <Button variant="ghost" onClick={resetLesson}><RotateCcw />{text.resetCode}</Button>
             </div>
             <div className={`result-console ${result?.passed ? 'passed' : result ? 'failed' : ''}`} aria-live="polite">
-              <div className="console-title"><span>真正的 Python 自动判题</span>{result?.passed && <span><Check />过关</span>}</div>
-              {!result ? <p>{running ? '正在浏览器中执行你的 Python…' : '代码会在你的电脑浏览器中运行，结果直接显示在这里。'}</p>
+              <div className="console-title"><span>{text.pythonGrader}</span>{result?.passed && <span><Check />{text.pass}</span>}</div>
+              {!result ? <p>{running ? text.executingPython : text.pythonLocalNote}</p>
                 : result.error ? <div className="error-output"><XCircle /><pre>{result.error}</pre></div>
                 : <div className="test-list">
                   {result.results.map((test) => <div className="test-row" key={test.label}>
                     {test.passed ? <CheckCircle2 /> : <XCircle />}
-                    <span><strong>{test.label}</strong><small>得到 {test.actual} · 应为 {test.expected}</small></span>
+                    <span><strong>{test.label}</strong><small>{text.actualExpected(test.actual, test.expected)}</small></span>
                   </div>)}
                   {result.stdout && <pre className="stdout">{result.stdout}</pre>}
                   {result.passed ? <div className="pass-actions">
-                    <strong>{currentId === lessons.length ? '全部基础关卡完成！去 3D 实验场看真正的 Microduck。' : '三组测试全部通过。下一关已解锁。'}</strong>
-                    <Button onClick={nextLesson}>{currentId === lessons.length ? <Trophy /> : <ChevronRight />}{currentId === lessons.length ? '进入 3D 实验场' : '进入下一关'}</Button>
-                  </div> : <strong className="try-again">还有测试没通过。对照“得到”和“应为”，或者点左侧提示。</strong>}
+                    <strong>{currentId === lessons.length ? text.allLessonsDone : text.testsPassed}</strong>
+                    <Button onClick={nextLesson}>{currentId === lessons.length ? <Trophy /> : <ChevronRight />}{currentId === lessons.length ? text.enterSimulator : text.nextLesson}</Button>
+                  </div> : <strong className="try-again">{text.testsRemain}</strong>}
                 </div>}
             </div>
           </section>

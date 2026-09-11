@@ -10,7 +10,7 @@ A local-first, CodeCombat-style reinforcement learning classroom for developers 
 
 **Project status: public preview.** Levels 0–3 run in the local classroom. PPO training, ONNX export, and physical-device installation remain on the roadmap. See the [release status](docs/RELEASE_STATUS.md) for verified capability boundaries and [architecture](docs/ARCHITECTURE.md) for runtime and data boundaries.
 
-![Microduck Academy lesson workspace](docs/assets/course.png)
+![Microduck Academy lesson workspace](docs/assets/course.en.jpg)
 
 ## Quick start
 
@@ -27,7 +27,7 @@ npm run academy
 
 Open `http://localhost:3210`, select **3D Lab**, and run a `control.duck` program against the official ONNX policies.
 
-![Microduck Academy 3D control studio](docs/assets/lab.png)
+![Microduck Academy 3D control studio](docs/assets/lab.en.jpg)
 
 ## Current scope
 
@@ -35,6 +35,7 @@ Open `http://localhost:3210`, select **3D Lab**, and run a `control.duck` progra
 - Level 1: six experiments against the simulator's real 61D observation, 13D command, and 14D action contract
 - Level 2: a bounded `control.duck` language with 25 documented API entries for continuous control, feedback logic, built-in skills, and compatible community moves
 - Level 3: a Task & Reward Lab that evaluates two reward configurations with real MuJoCo rollouts and compares return, tracking error, action energy, and termination
+- Chinese and English classroom UI, lessons, API Reference, and repository documentation
 - Browser-local Python through Pyodide; progress stays in `localStorage` and can be exported as JSON
 
 No account is required. The classroom does not record the screen or upload learner progress, code, or experiment history. See [PRIVACY.md](PRIVACY.md).
@@ -58,6 +59,6 @@ The repository does not redistribute the official simulator, ONNX policies, robo
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, [SUPPORT.md](SUPPORT.md) for help, [the architecture](docs/ARCHITECTURE.md) for trust boundaries, and [the maintainer guide](docs/MAINTAINER_GUIDE.md) for releases.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, [SUPPORT.md](SUPPORT.md) for help, [the architecture](docs/ARCHITECTURE.md) for trust boundaries, [the control API](docs/CONTROL_API.md), [the project roadmap](docs/OPEN_SOURCE_ROADMAP.md), and [the maintainer guide](docs/MAINTAINER_GUIDE.md) for releases. Each page links to its Chinese counterpart.
 
 Academy source is licensed under Apache-2.0. Microduck is a Pollen Robotics project; this independent classroom is not affiliated with or endorsed by Pollen Robotics or Hugging Face.

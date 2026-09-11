@@ -1,5 +1,7 @@
 # Architecture
 
+[简体中文](ARCHITECTURE.zh-CN.md) · English
+
 Microduck Academy is a local-first learning application. Its own source is small; simulator and Python runtimes are generated locally and kept out of Git.
 
 ```mermaid
