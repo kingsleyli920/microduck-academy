@@ -8,6 +8,8 @@ English · [中文](README.md)
 
 A local-first, CodeCombat-style reinforcement learning classroom for developers learning with Microduck. Learners read a mission, write code, run browser-local tests, inspect real policy telemetry, and control the official MuJoCo + ONNX simulator from one page.
 
+![Microduck Academy: learn reinforcement learning by building with Microduck](docs/assets/linkedin-launch.jpg)
+
 **Project status: public preview.** Levels 0–3 run in the local classroom. PPO training, ONNX export, and physical-device installation remain on the roadmap. See the [release status](docs/RELEASE_STATUS.md) for verified capability boundaries and [architecture](docs/ARCHITECTURE.md) for runtime and data boundaries.
 
 ![Microduck Academy lesson workspace](docs/assets/course.en.jpg)

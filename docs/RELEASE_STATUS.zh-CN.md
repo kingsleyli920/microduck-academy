@@ -2,11 +2,11 @@
 
 公开仓库：<https://github.com/kingsleyli920/microduck-academy>
 
-当前版本：`v0.1.0-preview`
+当前版本：`v0.2.0-preview`
 
-## v0.1 的准确定位
+## v0.2 的准确定位
 
-当前版本是一个 local-first 的开源预览：完成强化学习入门、真实策略观察和浏览器动作编排。它不是完整训练平台，也尚未连接真实 Microduck。
+当前版本是一个中英文、local-first 的开源预览：包括强化学习入门、真实策略观察、浏览器动作编排和 Reward A/B 评估。它不是完整训练平台，也尚未连接真实 Microduck。
 
 | 能力 | 状态 |
 | --- | --- |
@@ -33,10 +33,8 @@ Academy 自有源码采用 Apache-2.0。官方 Microduck Simulator 当前没有�
 ```bash
 npm ci
 npm run setup:runtime
-npm run check:runtime
-npm test
-npm run lint
-npm run build
+npm run verify
+npm run academy
 ```
 
 真机兼容声明必须等硬件到货后，通过真实设备的连接、限位、策略安装、回滚和 telemetry 验收。
