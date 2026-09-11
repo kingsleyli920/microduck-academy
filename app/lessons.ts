@@ -79,11 +79,11 @@ const lessonsZh: Lesson[] = [
   },
   {
     id: 3,
-    shortTitle: '目标条件动作',
-    title: '根据目标距离选择速度',
-    mission: '根据目标距离输出分段速度指令。',
-    teacher: '实现 command-conditioned policy 的简化版本：目标距离进入 observation，策略输出期望速度。比较远、中、近三种 command。',
-    concept: ['观察距离', '选择速度', '执行动作'],
+    shortTitle: '目标到速度指令',
+    title: '把目标距离转成速度 command',
+    mission: '用高层控制器根据目标距离输出分段速度指令。',
+    teacher: '这里编写的是 policy 之上的目标控制器：它把距离转成速度 command。随后，Microduck 的 command-conditioned policy 把当前机器人 observation 和这个 command 映射为 14D 关节 action。',
+    concept: ['读取目标距离', '生成速度 command', 'policy 输出关节 action'],
     filename: 'action.py',
     functionName: 'choose_speed',
     starter: `def choose_speed(distance_to_goal):
@@ -92,14 +92,14 @@ const lessonsZh: Lesson[] = [
     if distance_to_goal > 0.1:
         return 0.0
     return 0.0`,
-    hint: ['把第一个 0.0 改成 0.4', '把第二个 0.0 改成 0.15', '最后仍然是 0.0'],
+    hint: ['把第一个 0.0 改成 0.24', '把第二个 0.0 改成 0.12', '最后仍然是 0.0'],
     tests: [
-      { label: '目标还很远', args: [1.2], expected: 0.4 },
-      { label: '目标已经较近', args: [0.3], expected: 0.15 },
+      { label: '目标还很远', args: [1.2], expected: 0.24 },
+      { label: '目标已经较近', args: [0.3], expected: 0.12 },
       { label: '已经抵达目标', args: [0.05], expected: 0 },
     ],
     labTitle: '速度指令',
-    labNote: '策略把 observation 映射为 action。这里使用分段规则模拟最简单的目标条件策略。',
+    labNote: '本关只生成高层速度 command。真实 Microduck policy 会将 command 与本体 observation 一起转成 14D 关节 action。',
   },
   {
     id: 4,
@@ -127,7 +127,7 @@ const lessonsZh: Lesson[] = [
     shortTitle: '连续动作探索',
     title: '从动作分布采样并限幅',
     mission: '从策略均值与噪声生成连续关节动作，并限制在 [-1, 1]。',
-    teacher: 'PPO 的 actor 输出动作分布参数，训练时从分布采样。这里用 mean + sigma × noise 模拟一次采样，再做 action clipping。',
+    teacher: 'PPO 的 actor 输出动作分布参数，训练时从分布采样。这里用 mean + sigma × noise 模拟一次采样，再把教学用归一化动作裁剪到 [-1, 1]。',
     concept: ['策略动作均值', '加入探索噪声', '限制动作范围'],
     filename: 'action_sampling.py',
     functionName: 'sample_joint_action',
@@ -142,14 +142,14 @@ const lessonsZh: Lesson[] = [
       { label: '超过动作下限', args: [-0.95, -1, 0.2], expected: -1 },
     ],
     labTitle: '连续动作采样器',
-    labNote: 'Microduck 的关节控制是连续动作空间。训练需要探索，部署推理通常使用分布均值以获得稳定动作。',
+    labNote: 'Microduck 的策略输出连续关节动作。训练需要探索，部署推理通常使用分布均值；实际缩放与硬件限位由策略和设备配置决定。',
   },
   {
     id: 6,
     shortTitle: '折扣回报',
     title: '计算折扣回报',
     mission: '计算折扣回报：第 t 步奖励乘以 gamma 的 t 次方。',
-    teacher: '实现 return-to-go。gamma 控制 credit assignment 的时间尺度；下一步会看到 value function 如何减少策略梯度方差。',
+    teacher: '计算从这条 reward 序列第 0 步开始的折扣回报。对每个时刻重复这个计算，才会得到完整的 return-to-go 序列。gamma 控制 credit assignment 的时间尺度。',
     concept: ['现在的奖励', '未来的奖励', '折扣后相加'],
     filename: 'discount.py',
     functionName: 'discounted_return',
@@ -173,7 +173,7 @@ const lessonsZh: Lesson[] = [
     shortTitle: 'PPO 裁剪目标',
     title: '实现 PPO 裁剪目标',
     mission: '实现 PPO clipped surrogate objective 的单样本版本。',
-    teacher: 'ratio 是新旧策略对同一动作的概率比。用 clip_epsilon 把 ratio 限制在可信区间，再取 unclipped 与 clipped objective 的较小值。',
+    teacher: 'ratio 是新旧策略对同一动作的概率比。PPO 不会强行把真实 ratio 限制在区间内；它使用裁剪后的 ratio 构造 surrogate objective，再取 unclipped 与 clipped 两项的较小值。',
     concept: ['计算概率比影响', '裁剪更新幅度', '保守优化策略'],
     filename: 'ppo_clip.py',
     functionName: 'ppo_objective',
@@ -203,12 +203,13 @@ const lessonsZh: Lesson[] = [
     starter: `def safe_reward(distance_m, fell, alive_steps):
     score = distance_m * 10
 
-    # 不要用 alive_steps 加分
+    # 这一行会让“拖时间”也能得高分，请修正
+    score += alive_steps * 0.1
 
     if fell:
         score -= 50
     return score`,
-    hint: ['这关的初始代码已经正确。直接运行，观察为什么 alive_steps 没被使用。'],
+    hint: ['删掉 score += alive_steps * 0.1；然后比较同样位移、不同步数的两组测试。'],
     tests: [
       { label: '正常前进 10 步', args: [0.5, false, 10], expected: 5 },
       { label: '同样距离拖 1000 步', args: [0.5, false, 1000], expected: 5 },
@@ -220,23 +221,23 @@ const lessonsZh: Lesson[] = [
   {
     id: 9,
     shortTitle: '部署安全层',
-    title: '限制策略输出范围',
-    mission: '把策略给出的关节角限制在 -1 到 1 弧度之间，避免超出安全范围。',
-    teacher: '实现部署侧 action guard。实际机器人还需要速度、力矩、温度、通信超时和 emergency stop；policy inference 只是控制栈的一层。',
-    concept: ['策略输出动作', '限制安全范围', '发送给电机'],
+    title: '实现教学用动作限幅',
+    mission: '把一个归一化动作限制在 [-1, 1]，理解部署前为什么需要 action guard。',
+    teacher: '这里的 [-1, 1] 是教学用归一化范围，不是 Microduck 真机关节限位。真机边界必须来自硬件配置，并结合速度、电流/力矩、温度、通信超时和紧急停止。',
+    concept: ['策略输出', '应用示例限幅', '交给硬件安全层'],
     filename: 'joint_safety.py',
     functionName: 'safe_joint_target',
-    starter: `def safe_joint_target(target_rad):
-    # 把目标角度限制在 -1.0 到 1.0 之间
-    return target_rad`,
-    hint: ['return max(-1.0, min(1.0, target_rad))'],
+    starter: `def safe_joint_target(normalized_action):
+    # 教学示例：将归一化动作限制在 [-1.0, 1.0]
+    return normalized_action`,
+    hint: ['return max(-1.0, min(1.0, normalized_action))'],
     tests: [
       { label: '目标超过上限', args: [2.5], expected: 1 },
       { label: '目标超过下限', args: [-1.8], expected: -1 },
       { label: '目标在安全范围', args: [0.4], expected: 0.4 },
     ],
-    labTitle: '关节安全限位器',
-    labNote: '真实部署还会有速度、力矩、温度和通信检查。这一关先理解：策略输出不能不经保护就直接送给电机。',
+    labTitle: '归一化动作限幅',
+    labNote: '这个函数只演示 guard 的结构。它不能直接用作 Microduck 硬件安全配置。',
   },
 ];
 
@@ -299,11 +300,11 @@ const lessonsEn: Lesson[] = [
   },
   {
     id: 3,
-    shortTitle: 'Goal-conditioned action',
-    title: 'Select speed from target distance',
-    mission: 'Return a piecewise speed command based on distance to the target.',
-    teacher: 'Implement a simplified goal-conditioned policy: target distance enters the observation and the policy returns a speed command. Compare far, near, and reached states.',
-    concept: ['Observe distance', 'Select speed', 'Apply action'],
+    shortTitle: 'Goal-to-command control',
+    title: 'Convert target distance into a speed command',
+    mission: 'Use a high-level controller to return a piecewise speed command from target distance.',
+    teacher: 'This function sits above the policy: it converts target distance into a speed command. The Microduck command-conditioned policy then maps the robot observation plus that command to a 14D joint action.',
+    concept: ['Read target distance', 'Produce speed command', 'Policy produces joint action'],
     filename: 'action.py',
     functionName: 'choose_speed',
     starter: `def choose_speed(distance_to_goal):
@@ -312,14 +313,14 @@ const lessonsEn: Lesson[] = [
     if distance_to_goal > 0.1:
         return 0.0
     return 0.0`,
-    hint: ['Change the first 0.0 to 0.4', 'Change the second 0.0 to 0.15', 'Keep the final value at 0.0'],
+    hint: ['Change the first 0.0 to 0.24', 'Change the second 0.0 to 0.12', 'Keep the final value at 0.0'],
     tests: [
-      { label: 'Target is far away', args: [1.2], expected: 0.4 },
-      { label: 'Target is nearby', args: [0.3], expected: 0.15 },
+      { label: 'Target is far away', args: [1.2], expected: 0.24 },
+      { label: 'Target is nearby', args: [0.3], expected: 0.12 },
       { label: 'Target reached', args: [0.05], expected: 0 },
     ],
     labTitle: 'Speed command',
-    labNote: 'A policy maps observations to actions. This exercise uses a piecewise rule as a minimal goal-conditioned policy.',
+    labNote: 'This lesson produces only the high-level speed command. The real Microduck policy combines that command with proprioceptive observations to produce a 14D joint action.',
   },
   {
     id: 4,
@@ -347,7 +348,7 @@ const lessonsEn: Lesson[] = [
     shortTitle: 'Continuous action exploration',
     title: 'Sample and clamp a continuous action',
     mission: 'Generate a joint action from a policy mean and noise, then clamp it to [-1, 1].',
-    teacher: 'A PPO actor produces action-distribution parameters. During training, the controller samples mean + sigma × noise and clips the resulting action.',
+    teacher: 'A PPO actor produces action-distribution parameters. During training, the controller samples mean + sigma × noise. This lesson then clips an illustrative normalized action to [-1, 1].',
     concept: ['Policy mean', 'Exploration noise', 'Action bounds'],
     filename: 'action_sampling.py',
     functionName: 'sample_joint_action',
@@ -362,14 +363,14 @@ const lessonsEn: Lesson[] = [
       { label: 'Below lower bound', args: [-0.95, -1, 0.2], expected: -1 },
     ],
     labTitle: 'Continuous action sampler',
-    labNote: 'Microduck uses a continuous joint-action space. Training samples actions for exploration; deployment commonly uses the distribution mean for stability.',
+    labNote: 'Microduck policies output continuous joint actions. Training samples actions for exploration; deployment commonly uses the distribution mean. Actual scaling and hardware limits come from policy and device configuration.',
   },
   {
     id: 6,
     shortTitle: 'Discounted return',
     title: 'Compute discounted return',
     mission: 'Multiply the reward at step t by gamma to the power of t, then sum the terms.',
-    teacher: 'Implement return-to-go. Gamma sets the time scale for credit assignment; value functions later reduce variance in policy-gradient estimates.',
+    teacher: 'Compute discounted return from step 0 of this reward sequence. Repeating the calculation at every time index produces the full return-to-go sequence. Gamma sets the time scale for credit assignment.',
     concept: ['Current reward', 'Future reward', 'Discounted sum'],
     filename: 'discount.py',
     functionName: 'discounted_return',
@@ -393,7 +394,7 @@ const lessonsEn: Lesson[] = [
     shortTitle: 'PPO clipped objective',
     title: 'Implement the PPO clipped objective',
     mission: 'Implement a single-sample PPO clipped surrogate objective.',
-    teacher: 'The ratio compares new and old policy probabilities for the same action. Clamp it to the trust region and take the smaller of the unclipped and clipped objectives.',
+    teacher: 'The ratio compares new and old policy probabilities for the same action. PPO does not force the actual ratio to stay inside the interval; it uses a clipped ratio in the surrogate objective, then takes the smaller clipped or unclipped term.',
     concept: ['Apply probability ratio', 'Clip update size', 'Optimize conservatively'],
     filename: 'ppo_clip.py',
     functionName: 'ppo_objective',
@@ -423,12 +424,13 @@ const lessonsEn: Lesson[] = [
     starter: `def safe_reward(distance_m, fell, alive_steps):
     score = distance_m * 10
 
-    # Do not reward alive_steps
+    # This line rewards delay instead of progress. Fix the exploit.
+    score += alive_steps * 0.1
 
     if fell:
         score -= 50
     return score`,
-    hint: ['The starter is already correct. Run it and inspect why alive_steps is unused.'],
+    hint: ['Remove score += alive_steps * 0.1, then compare the two tests with equal displacement and different episode lengths.'],
     tests: [
       { label: 'Moves 0.5 m in 10 steps', args: [0.5, false, 10], expected: 5 },
       { label: 'Same distance in 1,000 steps', args: [0.5, false, 1000], expected: 5 },
@@ -440,23 +442,23 @@ const lessonsEn: Lesson[] = [
   {
     id: 9,
     shortTitle: 'Deployment safety layer',
-    title: 'Bound policy outputs',
-    mission: 'Clamp the target joint angle to the safe range from -1 to 1 radian.',
-    teacher: 'Implement a deployment-side action guard. A physical robot also needs velocity, torque, temperature, communication-timeout, and emergency-stop checks.',
-    concept: ['Policy output', 'Apply safety bound', 'Send motor target'],
+    title: 'Implement an illustrative action clamp',
+    mission: 'Clamp a normalized action to [-1, 1] and learn why deployment needs an action guard.',
+    teacher: 'The [-1, 1] interval here is an illustrative normalized range, not a Microduck hardware joint limit. Physical limits must come from the hardware configuration and include velocity, current/torque, temperature, timeout, and emergency-stop handling.',
+    concept: ['Policy output', 'Apply example clamp', 'Pass to hardware safety layer'],
     filename: 'joint_safety.py',
     functionName: 'safe_joint_target',
-    starter: `def safe_joint_target(target_rad):
-    # Clamp the target angle to [-1.0, 1.0]
-    return target_rad`,
-    hint: ['return max(-1.0, min(1.0, target_rad))'],
+    starter: `def safe_joint_target(normalized_action):
+    # Teaching example: clamp a normalized action to [-1.0, 1.0]
+    return normalized_action`,
+    hint: ['return max(-1.0, min(1.0, normalized_action))'],
     tests: [
       { label: 'Target above upper bound', args: [2.5], expected: 1 },
       { label: 'Target below lower bound', args: [-1.8], expected: -1 },
       { label: 'Target inside safe range', args: [0.4], expected: 0.4 },
     ],
-    labTitle: 'Joint target clamp',
-    labNote: 'Real deployment adds velocity, torque, temperature, and communication checks. Policy output must pass a safety layer before reaching the motors.',
+    labTitle: 'Normalized action clamp',
+    labNote: 'This function demonstrates the shape of a guard. It is not a Microduck hardware safety configuration.',
   },
 ];
 

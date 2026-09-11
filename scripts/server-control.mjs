@@ -13,11 +13,11 @@ function openBrowser() {
   spawn('open', [publicUrl], { detached: true, stdio: 'ignore' }).unref();
 }
 
-function probe(port) {
+function probe(port, path = '/') {
   return new Promise((resolve) => {
-    const req = httpRequest({ hostname: '127.0.0.1', port, path: '/', timeout: 500 }, (res) => {
+    const req = httpRequest({ hostname: '127.0.0.1', port, path, timeout: 500 }, (res) => {
       res.resume();
-      resolve(true);
+      resolve(path === '/__academy_status' ? res.headers['x-microduck-academy'] === '1' : true);
     });
     req.on('error', () => resolve(false));
     req.on('timeout', () => { req.destroy(); resolve(false); });
@@ -43,9 +43,19 @@ async function stopEverything(server, response) {
   setTimeout(() => process.exit(0), 1_500);
 }
 
-if (await probe(publicPort)) {
+if (await probe(publicPort, '/__academy_status')) {
   openBrowser();
   process.exit(0);
+}
+
+if (await probe(publicPort)) {
+  console.error(`端口 ${publicPort} 已被其他程序占用。请关闭该程序后重新启动课堂。`);
+  process.exit(1);
+}
+
+if (await probe(appPort)) {
+  console.error(`内部端口 ${appPort} 已被其他程序占用。请关闭该程序后重新启动课堂。`);
+  process.exit(1);
 }
 
 try {
@@ -72,7 +82,23 @@ await waitForApp();
 
 const server = createServer((incoming, outgoing) => {
   if (incoming.method === 'POST' && incoming.url === '/__shutdown') {
+    const origin = incoming.headers.origin;
+    if (origin && origin !== publicUrl && origin !== `http://127.0.0.1:${publicPort}`) {
+      outgoing.writeHead(403, { 'content-type': 'application/json; charset=utf-8' });
+      outgoing.end(JSON.stringify({ stopped: false, error: 'origin rejected' }));
+      return;
+    }
     void stopEverything(server, outgoing);
+    return;
+  }
+
+  if (incoming.method === 'GET' && incoming.url === '/__academy_status') {
+    outgoing.writeHead(200, {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'no-store',
+      'x-microduck-academy': '1',
+    });
+    outgoing.end(JSON.stringify({ service: 'microduck-academy', ready: true }));
     return;
   }
 

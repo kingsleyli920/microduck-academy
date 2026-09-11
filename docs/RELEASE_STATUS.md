@@ -2,7 +2,7 @@
 
 [中文](RELEASE_STATUS.zh-CN.md) · English
 
-Current version: `v0.2.0-preview`
+Current version: `v0.2.1-preview`
 
 Microduck Academy is a public preview. The repository is suitable for learning, experimentation, and contribution, but does not yet provide an end-to-end policy-training and hardware-deployment workflow.
 
@@ -12,7 +12,7 @@ Microduck Academy is a public preview. The repository is suitable for learning, 
 | Level 0 browser-local Python curriculum | Available, 9 lessons |
 | Level 1 real policy observation | Available, 6 experiments |
 | Level 2 `control.duck` programming | Available, 25 API entries |
-| Compatible community policy loading | Available through the simulator bridge |
+| Compatible community policy loading | Manifest-compatible Hub repositories and HTTPS ONNX URLs through the simulator bridge |
 | Level 3 reward and termination A/B lab | Available in the current source; real MuJoCo rollout, no policy update |
 | Level 4 PPO training | Planned |
 | Level 5 evaluation and ONNX export | Planned |
@@ -22,8 +22,11 @@ Microduck Academy is a public preview. The repository is suitable for learning, 
 
 - Node.js 22
 - macOS browser workflow
+- 390 px responsive Chrome viewport
 - Official simulator commit `023172c8a7d629b5258d90364c13bafe013abbfa`
 - Pyodide 0.29.3
+
+Academy embedded mode disables upstream multiplayer signaling and pose broadcast. Hub or HTTPS ONNX files are fetched only after an explicit `move(ref)` command.
 
 The selected language is stored with the browser-local learning profile. Switching languages preserves learner-edited code and experiment records.
 

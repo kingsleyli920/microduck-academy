@@ -35,7 +35,7 @@ try:
         exec(payload["code"], namespace)
         candidate = namespace.get(payload["functionName"])
         if not callable(candidate):
-            raise NameError(f'找不到函数 {payload["functionName"]}，请保留题目给出的函数名。')
+            raise NameError(payload["missingFunction"])
         for test in payload["tests"]:
             try:
                 actual = candidate(*test["args"])

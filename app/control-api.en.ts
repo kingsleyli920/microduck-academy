@@ -27,8 +27,8 @@ export const englishControlCopy: Record<string, EnglishControlCopy> = {
     parameters: ['ms: delay from 0 to 10,000 ms'], notes: ['Stop can interrupt the whole program during a wait.'],
   },
   reset: {
-    title: 'Reset the physics world', summary: 'Calls resetSim() in the official simulator to restore the initial robot and scene state.',
-    parameters: ['No parameters'], notes: ['Physical hardware has no equivalent instant world reset.'],
+    title: 'Reset the physics world', summary: 'Calls resetSim() in the official simulator and waits for the reset animation to release its input lock.',
+    parameters: ['No parameters'], notes: ['Physical hardware has no equivalent instant world reset.', 'The next command runs after the simulator accepts input again.'],
   },
   print: {
     title: 'Read and print an observation', summary: 'Reads the current 61D observation and writes one indexed value to the execution trace.',
@@ -44,7 +44,7 @@ export const englishControlCopy: Record<string, EnglishControlCopy> = {
   },
   'skill-roll': {
     title: 'Roll policy', summary: 'Switches to the official trained roll ONNX policy.', parameters: ['Fixed skill name: "roll"'],
-    notes: ['The trigger is non-blocking; add wait(2500) to allow the motion to finish.', 'This calls an existing policy and does not train a new motion.'],
+    notes: ['The trigger is non-blocking; add wait(3200) to allow the official motion and recovery to finish.', 'This calls an existing policy and does not train a new motion.'],
   },
   'skill-kick': {
     title: 'Kick policy', summary: 'Switches to the official left-foot or right-foot kick ONNX policy.', parameters: ['Skill name: "kick_left" or "kick_right"'],
@@ -101,8 +101,8 @@ export const englishControlCopy: Record<string, EnglishControlCopy> = {
   },
   move: {
     title: 'Load a community or custom motion', summary: 'Loads a manifest through the official loader, validates tensor shapes and outputs, then mounts the motion.',
-    parameters: ['ref: "org/repo", "session:id[:round]", or an accessible HTTPS .onnx URL'],
-    notes: ['Community motions are published dynamically, so there is no fixed complete list.', 'Supports perpetual gait or sit-stand, episodic trick, and command-script manifests.', 'The official policy remains active if validation fails.'],
+    parameters: ['ref: "org/repo" or an accessible HTTPS .onnx URL'],
+    notes: ['Community motions are published dynamically, so there is no fixed complete list.', 'Supports perpetual gait or sit-stand, episodic trick, and command-script manifests.', 'A direct ONNX URL without a sibling manifest mounts as a perpetual walk policy.', 'The official policy remains active if validation fails.'],
   },
   'play-move': {
     title: 'Play the loaded motion', summary: 'Starts the loaded episodic, script, or sit-stand motion according to its manifest slot. A walk gait becomes active when loaded.',

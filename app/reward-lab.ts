@@ -12,7 +12,7 @@ export type RewardConfig = {
 };
 
 export type RewardSample = {
-  velocityX: number;
+  planarSpeed: number;
   gravityZ: number;
   height: number;
   action: number[];
@@ -68,7 +68,7 @@ const meanSquare = (values: number[]) => values.length
   : 0;
 
 export function scoreRewardSample(config: RewardConfig, sample: RewardSample, previousAction: number[] | null): RewardBreakdown {
-  const error = sample.velocityX - config.targetSpeed;
+  const error = sample.planarSpeed - config.targetSpeed;
   const tracking = Math.exp(-4 * error * error);
   const upright = Math.max(0, Math.min(1, -sample.gravityZ));
   const effort = meanSquare(sample.action);

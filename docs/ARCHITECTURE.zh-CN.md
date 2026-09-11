@@ -21,7 +21,8 @@ flowchart LR
 - 课程代码在 Pyodide Web Worker 中执行，不发送到远程服务。
 - 学习进度、代码、Reward 配置和汇总指标保存在浏览器 `localStorage`。
 - `control.duck` 使用受限语法，不执行任意 JavaScript。
-- 社区 manifest 和 ONNX policy 属于不可信输入，必须通过上游加载器的兼容性检查。
+- 嵌入模式在模拟器模块加载前关闭多人 WebSocket signaling，避免连接公共 relay 或广播姿态。
+- 只有学习者执行 `move(ref)` 时才会读取外部 manifest 或 ONNX；这些内容属于不可信输入，必须通过上游加载器的兼容性检查。
 - 官方模拟器构建产物、模型和资源不进入 Academy 仓库。
 
 ## 学习阶段

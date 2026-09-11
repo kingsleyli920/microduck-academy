@@ -21,8 +21,8 @@ flowchart LR
 - **Academy source:** React UI, lessons, the bounded `control.duck` parser, reward evaluation, local launcher, and documentation in this repository.
 - **Generated local runtime:** Pyodide and the built official simulator under ignored `public/` paths. `npm run setup:runtime` creates these files from pinned inputs.
 - **Browser data:** learner code, progress, control programs, Level 3 configurations, and aggregate results remain in `localStorage`. The Learning Path export is the explicit portability mechanism.
-- **Upstream policy execution:** the official simulator owns MuJoCo stepping and ONNX inference. Academy reads exposed state and sends commands through a narrow browser bridge.
-- **Untrusted community input:** external manifests and ONNX policies are user-selected inputs. They are not part of the Academy trust boundary.
+- **Upstream policy execution:** the official simulator owns MuJoCo stepping and ONNX inference. Academy reads exposed state and sends commands through a narrow browser bridge. Academy mode disables the simulator’s multiplayer WebSocket signaling before its module loads.
+- **Untrusted community input:** external manifests and ONNX policies are user-selected inputs. They are fetched only after `move(ref)` and are not part of the Academy trust boundary.
 
 ## Learning levels
 

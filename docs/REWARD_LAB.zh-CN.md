@@ -15,7 +15,7 @@ Level 3 用官方 Microduck 3D 模拟器里的真实 MuJoCo 状态，帮助学�
 ## 当前 reward
 
 ```text
-tracking   = exp(-4 × (velocity_x - target_speed)²)
+tracking   = exp(-4 × (planar_speed - target_speed)²)
 upright    = clamp(-projected_gravity_z, 0, 1)
 effort     = mean(action²)
 smoothness = mean((action_t - action_t-1)²)
@@ -40,7 +40,7 @@ reward = tracking_weight × tracking
 
 不要只比较 return：A 和 B 使用不同的评分尺子，权重变大本身就可能让 return 变大。还要同时看：
 
-- `mean vx` 是否接近目标速度；
+- `mean speed` 是否接近目标速度；
 - `tracking error` 是否下降；
 - `action energy` 与 `smoothness` 是否恶化；
 - 是否因为 `tilt` 或 `height` 提前终止；

@@ -15,7 +15,7 @@ Level 3 uses state from the official Microduck MuJoCo simulator to turn a task s
 ## Reward function
 
 ```text
-tracking   = exp(-4 × (velocity_x - target_speed)²)
+tracking   = exp(-4 × (planar_speed - target_speed)²)
 upright    = clamp(-projected_gravity_z, 0, 1)
 effort     = mean(action²)
 smoothness = mean((action - previous_action)²)

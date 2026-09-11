@@ -13,12 +13,12 @@ drive(0.18, 0.0, 1200)
 turn(0.55, 600)
 
 print(obs[5])
-if obs[5] < -0.85 {
+if obs[5] > -0.85 {
   look(0.30, -0.15, 0.45, 0.0, 800)
   skill("roll")
 }
 
-wait(2200)
+wait(3000)
 reset()
 ```
 
@@ -49,7 +49,7 @@ reset()
 | `rollers()` / `legs()` | Environment | Compatible policy required | Switch the active robot base and locomotion policy. |
 | `reset()` | Environment | Simulator only | Restore the initial physics state. |
 | `camera("follow" | "free")` | Simulator | Simulator only | Change the camera mode. |
-| `move(ref)` | Policy | Compatible policy required | Load a compatible Hub, Academy session, or HTTPS ONNX motion. |
+| `move(ref)` | Policy | Compatible policy required | Load a compatible Hub repository or HTTPS ONNX policy. A direct URL without a sibling manifest defaults to a perpetual walk slot. |
 | `play_move()` | Policy | Compatible policy required | Play the loaded episodic, script, or sit-stand motion. |
 | `official()` | Policy | Compatible policy required | Unload a community motion and restore official policies. |
 | `push(vx, vy, vz, wx, wy, wz)` | Simulator | Simulator only | Apply a bounded external disturbance. |
@@ -69,6 +69,10 @@ The in-app API Reference contains parameter bounds, behavior notes, and an inser
 | `obs[48..60]` | 13D | Velocity 3D + head 4D + reserved body 6D command |
 
 Joint order is left hip yaw / roll / pitch / knee / ankle, neck pitch, head pitch / yaw / roll, then right hip yaw / roll / pitch / knee / ankle.
+
+## Reset behavior
+
+`reset()` restores the initial physics state and waits until the simulator releases its respawn input lock. The next statement therefore does not silently run during the reset animation.
 
 ## Input priority and stopping
 
